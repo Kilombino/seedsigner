@@ -99,24 +99,26 @@ def finalize(psbt: PSBT) -> Transaction:
 
 class TestUnifiedSighash:
     def test_knots_vectors(self):
-        """Every script-type 0 and 1 vector of Knots' unified_sighash.json."""
+        """Every script-type 0, 1 and 2 vector of Knots' unified_sighash.json."""
         path = os.path.join(os.path.dirname(__file__), "data", "unified_sighash.json")
         rows = json.load(open(path))[1:]
         checked = 0
         for sc, raw, idx, hash_type, script_type, spent, expected in rows:
-            if script_type not in (0, 1):
+            if script_type not in (0, 1, 2):
                 continue
             tx = Transaction.parse(bytes.fromhex(raw))
+            w = tx.vin[idx].witness.items if tx.vin[idx].witness else []
+            annex = w[-1] if script_type == 2 and len(w) >= 2 and w[-1][:1] == b"\x50" else None
             h = unified_message_hash(
                 version=tx.version, locktime=tx.locktime, hash_type=hash_type, script_type=script_type,
                 prevouts=[bytes(reversed(v.txid)) + v.vout.to_bytes(4, "little") for v in tx.vin],
                 amounts=[a for a, _ in spent], spent_scripts=[bytes.fromhex(s) for _, s in spent],
                 sequences=[v.sequence for v in tx.vin],
                 outputs=[(o.value, o.script_pubkey.data) for o in tx.vout],
-                input_index=idx, script_code=bytes.fromhex(sc))
+                input_index=idx, script_code=bytes.fromhex(sc), annex=annex)
             assert h.hex() == expected
             checked += 1
-        assert checked == 142
+        assert checked == 154   # every bare/P2SH, segwit v0 and taproot key-path vector
 
     def test_refuses_hash_type_without_the_unified_bit(self):
         with pytest.raises(UnifiedSighashError):
