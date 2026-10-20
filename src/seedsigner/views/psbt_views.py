@@ -1,5 +1,6 @@
 from gettext import gettext as _
 
+from seedsigner.models.fidelity_bond import FidelityBondError
 from seedsigner.models.psbt_parser import PSBTParser
 from seedsigner.models.settings import SettingsConstants
 from seedsigner.gui.components import FontAwesomeIconConstants, SeedSignerIconConstants
@@ -87,6 +88,7 @@ class PSBTOverviewView(View):
         super().__init__()
 
         self.loading_screen = None
+        self.refusal = None
 
         if not self.controller.psbt_parser or self.controller.psbt_parser.seed != self.controller.psbt_seed:
             # The PSBTParser takes a while to read the PSBT. Run the loading screen while
@@ -101,6 +103,13 @@ class PSBTOverviewView(View):
                     seed=self.controller.psbt_seed,
                     network=self.settings.get_value(SettingsConstants.SETTING__NETWORK)
                 )
+            except FidelityBondError as e:
+                # XBT: a bond (or 0x21) input that must not be signed. Say why
+                # instead of crashing into the generic error screen.
+                self.loading_screen.stop()
+                self.loading_screen = None
+                self.controller.psbt_parser = None
+                self.refusal = str(e)
             except Exception as e:
                 self.loading_screen.stop()
                 raise e
@@ -108,6 +117,9 @@ class PSBTOverviewView(View):
 
     def run(self):
         from seedsigner.gui.screens.psbt_screens import PSBTOverviewScreen
+        if self.refusal:
+            return Destination(PSBTRefusedView, view_args={"reason": self.refusal}, skip_current_view=True)
+
         psbt_parser = self.controller.psbt_parser
 
         change_data = psbt_parser.change_data
@@ -151,6 +163,10 @@ class PSBTOverviewView(View):
             self.controller.psbt_seed = None
             return Destination(BackStackView)
 
+        # XBT: a JoinMarket fidelity bond is shown on its own screen first.
+        if psbt_parser.is_bond_spend:
+            return Destination(PSBTFidelityBondView, view_args={"bond_num": 0})
+
         # expecting p2sh (legacy multisig) and p2pkh to have no policy set
         # skip change warning and psbt math view
         if psbt_parser.policy == None:
@@ -161,6 +177,70 @@ class PSBTOverviewView(View):
 
         else:
             return Destination(PSBTMathView)
+
+
+
+class PSBTFidelityBondView(View):
+    """
+        XBT: what a JoinMarket fidelity bond input is, before the usual review.
+        One screen per bond input: its amount, the date it unlocks (read from its
+        own script) and the key it is signed with.
+    """
+    def __init__(self, bond_num: int = 0):
+        super().__init__()
+        self.bond_num = bond_num
+
+
+    def run(self):
+        from seedsigner.gui.screens.psbt_screens import PSBTFidelityBondScreen
+        psbt_parser: PSBTParser = self.controller.psbt_parser
+        if not psbt_parser or not psbt_parser.is_bond_spend:
+            # Should not be able to get here
+            return Destination(MainMenuView)
+
+        bond = psbt_parser.bond_inputs[self.bond_num]
+        selected_menu_num = self.run_screen(
+            PSBTFidelityBondScreen,
+            amount=bond.amount,
+            unlock_date=bond.unlock_date,
+            derivation_path=bond.derivation_path,
+            button_data=[ButtonOption("Next")],
+        )
+
+        if selected_menu_num == RET_CODE__BACK_BUTTON:
+            return Destination(BackStackView)
+
+        if self.bond_num < len(psbt_parser.bond_inputs) - 1:
+            return Destination(PSBTFidelityBondView, view_args={"bond_num": self.bond_num + 1})
+
+        # A bond is spent whole, so there is normally no change: same route as
+        # the overview would have taken.
+        if psbt_parser.change_amount == 0:
+            return Destination(PSBTNoChangeWarningView)
+        return Destination(PSBTMathView)
+
+
+
+class PSBTRefusedView(View):
+    """
+        XBT: a PSBT this firmware will not sign, with the reason. Only route out
+        is discarding it.
+    """
+    def __init__(self, reason: str = ""):
+        super().__init__()
+        self.reason = reason
+
+
+    def run(self):
+        self.run_screen(
+            DireWarningScreen,
+            title=_("Will Not Sign"),
+            status_headline=_("Unsafe transaction"),
+            text=self.reason,
+            button_data=[ButtonOption("Discard transaction")],
+            show_back_button=False,
+        )
+        return Destination(MainMenuView, clear_history=True)
 
 
 
@@ -541,6 +621,10 @@ class PSBTFinalizeView(View):
             # Sign PSBT
             sig_cnt = PSBTParser.sig_count(psbt)
             psbt.sign_with(psbt_parser.root)
+            if psbt_parser.has_unified_sighash:
+                # XBT: embit skips inputs that ask for 0x21; sign those here.
+                from seedsigner.helpers.unified_sighash import sign_unified
+                sign_unified(psbt, psbt_parser.root)
             trimmed_psbt = PSBTParser.trim(psbt)
 
             if sig_cnt == PSBTParser.sig_count(trimmed_psbt):

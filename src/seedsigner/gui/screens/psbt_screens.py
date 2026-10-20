@@ -783,3 +783,54 @@ class PSBTFinalizeScreen(ButtonListScreen):
             text=_("Click to approve this transaction"),
             screen_y=icon.screen_y + icon.height + 2*GUIConstants.COMPONENT_PADDING
         ))
+
+
+
+@dataclass
+class PSBTFidelityBondScreen(ButtonListScreen):
+    """
+        XBT: one JoinMarket fidelity bond being spent. The amount, the date its
+        timelock ends (read from the bond's own script) and the key that signs.
+    """
+    amount: int = 0
+    unlock_date: str = None
+    derivation_path: str = None
+
+    def __post_init__(self):
+        # TRANSLATOR_NOTE: A JoinMarket fidelity bond: coins timelocked to show a maker is serious
+        self.title = _("Fidelity Bond")
+        self.is_bottom_list = True
+        super().__post_init__()
+
+        self.components.append(BtcAmount(
+            total_sats=self.amount,
+            screen_y=self.top_nav.height + GUIConstants.COMPONENT_PADDING,
+        ))
+
+        self.components.append(IconTextLine(
+            icon_name=FontAwesomeIconConstants.LOCK,
+            icon_color=GUIConstants.INFO_COLOR,
+            # TRANSLATOR_NOTE: The date (YYYY-MM-DD, UTC) a fidelity bond's timelock ends
+            label_text=_("unlocks"),
+            value_text=self.unlock_date,
+            screen_x=GUIConstants.EDGE_PADDING,
+            screen_y=self.components[-1].screen_y + self.components[-1].height + GUIConstants.COMPONENT_PADDING,
+        ))
+
+        self.components.append(IconTextLine(
+            icon_name=SeedSignerIconConstants.DERIVATION,
+            icon_color=GUIConstants.INFO_COLOR,
+            label_text=_("derivation"),
+            value_text=self.derivation_path,
+            screen_x=GUIConstants.EDGE_PADDING,
+            screen_y=self.components[-1].screen_y + self.components[-1].height + GUIConstants.COMPONENT_PADDING,
+        ))
+
+        self.components.append(IconTextLine(
+            icon_name=SeedSignerIconConstants.SUCCESS,
+            icon_color=GUIConstants.SUCCESS_COLOR,
+            # TRANSLATOR_NOTE: The signature only works on the Bitcoin BLAKE2b chain, so it cannot be replayed on the SHA-256 chain
+            value_text=_("XBT replay-safe (0x21)"),
+            screen_x=GUIConstants.EDGE_PADDING,
+            screen_y=self.components[-1].screen_y + self.components[-1].height + GUIConstants.COMPONENT_PADDING,
+        ))

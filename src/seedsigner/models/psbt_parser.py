@@ -8,6 +8,8 @@ from embit.ec import PublicKey
 from io import BytesIO
 from typing import List
 
+from seedsigner.helpers.unified_sighash import SIGHASH_UNIFIED_ALL
+from seedsigner.models import fidelity_bond
 from seedsigner.models.seed import Seed
 from seedsigner.models.settings import SettingsConstants
 
@@ -36,6 +38,11 @@ class PSBTParser():
         self.destination_amounts = []
         self.op_return_data: bytes = None
 
+        # XBT: JoinMarket fidelity bonds being spent (fidelity_bond.BondInput), and
+        # whether any input asks for the unified sighash (0x21).
+        self.bond_inputs: List[fidelity_bond.BondInput] = []
+        self.has_unified_sighash = False
+
         self.root = None
 
         if self.seed is not None:
@@ -58,6 +65,11 @@ class PSBTParser():
             Multisig psbts will have "m" and "n" defined in policy
         """
         return "m" in self.policy
+
+
+    @property
+    def is_bond_spend(self):
+        return len(self.bond_inputs) > 0
 
 
     @property
@@ -97,7 +109,18 @@ class PSBTParser():
     def _parse_inputs(self):
         self.input_amount = 0
         self.num_inputs = len(self.psbt.inputs)
-        for inp in self.psbt.inputs:
+        self.bond_inputs = []
+        self.has_unified_sighash = any(inp.sighash_type == SIGHASH_UNIFIED_ALL for inp in self.psbt.inputs)
+        if self.has_unified_sighash:
+            # The unified message commits to every input's amount and script, so
+            # every input must carry its previous output.
+            for i, inp in enumerate(self.psbt.inputs):
+                if inp.utxo is None:
+                    raise fidelity_bond.FidelityBondError("Input %d has no previous output: cannot sign it for XBT." % (i + 1))
+                if inp.sighash_type == SIGHASH_UNIFIED_ALL and inp.is_taproot:
+                    raise fidelity_bond.FidelityBondError("Input %d: Taproot with the XBT unified sighash is not supported yet." % (i + 1))
+        coin_type = 0 if self.network == SettingsConstants.MAINNET else 1
+        for i, inp in enumerate(self.psbt.inputs):
             if inp.witness_utxo:
                 self.input_amount += inp.witness_utxo.value
                 script_pubkey = inp.witness_utxo.script_pubkey
@@ -105,7 +128,13 @@ class PSBTParser():
                 self.input_amount += inp.utxo.value
                 script_pubkey = inp.script_pubkey
 
-            inp_policy = PSBTParser._get_policy(inp, script_pubkey, self.psbt.xpubs)
+            if fidelity_bond.is_bond_input(self.psbt, i):
+                # A JoinMarket fidelity bond: single-key P2WSH with a timelock,
+                # which the multisig policy below cannot read.
+                self.bond_inputs.append(fidelity_bond.check_bond_input(self.psbt, i, self.root, coin_type))
+                inp_policy = {"type": "p2wsh", "jm_bond": True}
+            else:
+                inp_policy = PSBTParser._get_policy(inp, script_pubkey, self.psbt.xpubs)
             if self.policy == None:
                 self.policy = inp_policy
             else:
