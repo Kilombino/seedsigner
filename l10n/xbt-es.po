@@ -1,0 +1,127 @@
+# Spanish for the strings SeedSigner XBT (BLAKE2b) adds. Appended to
+# seedsigner-translations l10n/es/LC_MESSAGES/messages.po (Kilombino/seedsigner-translations, branch xbt).
+msgid "For XBT (BLAKE2b) · sighash 0x21"
+msgstr "Para XBT (BLAKE2b) · sighash 0x21"
+
+msgid "SHA-256 chain · bonds 0x21"
+msgstr "Cadena SHA-256 · bonds 0x21"
+
+msgid "For the SHA-256 chain · XBT off"
+msgstr "Para la cadena SHA-256 · XBT apagado"
+
+msgid "Fidelity Bond"
+msgstr "Fidelity bond"
+
+msgid "unlocks"
+msgstr "se desbloquea"
+
+msgid "derivation"
+msgstr "derivación"
+
+msgid "XBT replay-safe (0x21)"
+msgstr "XBT sin replay (0x21)"
+
+msgid "Bond input {}: the witness script is not the one the coins are locked to."
+msgstr "Entrada bond {}: el witness script no es el que bloquea las monedas."
+
+msgid "Bond input {}: the previous transaction does not match its txid."
+msgstr "Entrada bond {}: la transacción anterior no coincide con su txid."
+
+msgid "Bond input {}: the amount does not match the previous transaction."
+msgstr "Entrada bond {}: el importe no coincide con la transacción anterior."
+
+msgid "Bond input {} is locked to a block height, not a date. Not a JoinMarket bond."
+msgstr "La entrada bond {} está bloqueada hasta una altura de bloque, no una fecha. No es un bond de JoinMarket."
+
+msgid "Bond input {}: the transaction's locktime is before the bond unlocks."
+msgstr "Entrada bond {}: el locktime de la transacción es anterior al desbloqueo del bond."
+
+msgid "Bond input {}: a final sequence would disable the timelock."
+msgstr "Entrada bond {}: una sequence final desactivaría el bloqueo temporal."
+
+msgid "Bond input {}: its locktime is not the 1st of a month. Not a JoinMarket bond."
+msgstr "Entrada bond {}: su locktime no es el día 1 de un mes. No es un bond de JoinMarket."
+
+msgid "Bond input {}: the PSBT does not say which key of this seed it uses."
+msgstr "Entrada bond {}: el PSBT no dice qué clave de esta semilla usa."
+
+msgid "Bond input {}: expected key {}, the PSBT says {}."
+msgstr "Entrada bond {}: se esperaba la clave {}, el PSBT dice {}."
+
+msgid "Bond input {} belongs to another seed."
+msgstr "La entrada bond {} pertenece a otra semilla."
+
+msgid "Bond input {}: this seed does not derive the bond's key."
+msgstr "Entrada bond {}: esta semilla no deriva la clave del bond."
+
+msgid "Input {} asks for sighash 0x{:02x}. This device only signs 0x21 (SIGHASH_ALL) for XBT."
+msgstr "La entrada {} pide el sighash 0x{:02x}. Este aparato solo firma 0x21 (SIGHASH_ALL) para XBT."
+
+msgid "Input {} has no previous output: cannot sign it for XBT."
+msgstr "La entrada {} no trae su salida anterior: no se puede firmar para XBT."
+
+msgid "This transaction asks for XBT signatures (sighash 0x{:02x}). Turn on XBT mode in Settings to sign it."
+msgstr "Esta transacción pide firmas XBT (sighash 0x{:02x}). Activa el modo XBT en Ajustes para firmarla."
+
+msgid "Input {} has no previous output: cannot sign for XBT."
+msgstr "La entrada {} no trae su salida anterior: no se puede firmar para XBT."
+
+msgid "Input {} has no utxo data: this transaction is missing required data."
+msgstr "La entrada {} no trae datos del utxo: a esta transacción le faltan datos necesarios."
+
+msgid "Input {} ({}) has no previous transaction to verify its amount against, so the fee cannot be trusted."
+msgstr "La entrada {} ({}) no trae la transacción anterior con la que comprobar su importe, así que la comisión no es fiable."
+
+msgid "Input {}: a multi-input segwit transaction without the previous transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with full previous transactions, or sign it in XBT mode."
+msgstr "Entrada {}: una transacción segwit de varias entradas sin las transacciones anteriores no puede demostrar su comisión (CVE-2020-14199). Exporta el PSBT con las transacciones anteriores completas, o fírmalo en modo XBT."
+
+msgid "Input {}: its outpoint is not in its previous transaction."
+msgstr "Entrada {}: su outpoint no está en su transacción anterior."
+
+msgid "Input {}: its previous transaction does not match the txid it spends."
+msgstr "Entrada {}: su transacción anterior no coincide con el txid que gasta."
+
+msgid "Input {}: its amount does not match its previous transaction."
+msgstr "Entrada {}: su importe no coincide con su transacción anterior."
+
+msgid "XBT mode (BLAKE2b)"
+msgstr "Modo XBT (BLAKE2b)"
+
+msgid "Signs with sighash 0x21"
+msgstr "Firma con sighash 0x21"
+
+msgid "XBT Mode"
+msgstr "Modo XBT"
+
+msgid "Bitcoin BLAKE2b (XBT)"
+msgstr "Bitcoin BLAKE2b (XBT)"
+
+msgid "Signing with sighash 0x21: valid only on the BLAKE2b chain, it cannot be replayed on the SHA-256 chain."
+msgstr "Firma con sighash 0x21: solo vale en la cadena BLAKE2b, no se puede reproducir en la cadena SHA-256."
+
+msgid "Mixed Signing"
+msgstr "Firma mixta"
+
+msgid "Bonds signed for XBT"
+msgstr "Bonds firmados para XBT"
+
+msgid "XBT mode is off, but fidelity bond inputs are always signed with sighash 0x21 (BLAKE2b chain only)."
+msgstr "El modo XBT está apagado, pero las entradas de fidelity bond se firman siempre con sighash 0x21 (solo cadena BLAKE2b)."
+
+msgid "XBT Mode Off"
+msgstr "Modo XBT apagado"
+
+msgid "SHA-256 chain"
+msgstr "Cadena SHA-256"
+
+msgid "Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay protection. Turn on XBT mode in Settings to sign for XBT."
+msgstr "Firmas normales: NO valen en Bitcoin BLAKE2b y no tienen protección contra replay. Activa el modo XBT en Ajustes para firmar para XBT."
+
+msgid "Will Not Sign"
+msgstr "No se firma"
+
+msgid "Unsafe transaction"
+msgstr "Transacción insegura"
+
+msgid "Cannot sign this"
+msgstr "No se puede firmar"
