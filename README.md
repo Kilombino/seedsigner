@@ -1,3 +1,31 @@
+# SeedSigner XBT fork (unofficial)
+
+**This is an unofficial fork of [SeedSigner](https://github.com/SeedSigner/seedsigner). It is not affiliated with, reviewed by or endorsed by the SeedSigner project.** It is SeedSigner 0.8.7 plus:
+
+* **XBT mode** (Settings › *XBT mode (BLAKE2b)*, on by default; SettingsQR `xbt=E` / `xbt=D`). On: every input is signed with the **unified sighash `0x21`** (`SIGHASH_UNIFIED | SIGHASH_ALL`) of Bitcoin Knots BLAKE2b (`doc/unified-sighash.md`), so the signature is valid only on the **Bitcoin BLAKE2b chain (XBT)** and cannot be replayed on the SHA-256 chain. Off: ordinary signatures for the SHA-256 chain. One device signs for both chains; a screen after the transaction overview, and the sign screen, say which.
+  * In XBT mode a PSBT naming no hash type, `0x00`, `0x01` or `0x21` is signed `0x21`, and `PSBT_IN_SIGHASH_TYPE` is written as `0x21` so finalizers agree. Any other hash type is refused. Taproot is signed on the key path only.
+  * With XBT mode off, a PSBT that asks for `0x21` is refused with "turn on XBT mode".
+* **JoinMarket fidelity bonds**: spending a timelocked bond (P2WSH `<locktime> OP_CHECKLOCKTIMEVERIFY OP_DROP <pubkey> OP_CHECKSIG`, key `m/84'/c'/0'/2/<timenumber>`) from a watch-only wallet such as Kilowallet. The device shows the amount, the unlock date read from the script and the key, checks nLockTime, sequence and that the key is this seed's at the path of that very locktime, and **always signs bonds with `0x21`**, whatever the mode.
+* **Input amounts are verified** before the fee is shown (port of upstream PR [#995](https://github.com/SeedSigner/seedsigner/pull/995), covering [#977](https://github.com/SeedSigner/seedsigner/pull/977) and [#966](https://github.com/SeedSigner/seedsigner/pull/966)): every input needs its UTXO; a `non_witness_utxo` must hash to the spent txid and agree with the `witness_utxo`. Signed the old way, legacy inputs need the previous transaction, and so do segwit v0 inputs of a multi-input transaction (CVE-2020-14199), which is stricter than upstream. Signed `0x21`, nothing more is needed: the unified sighash commits to the amount of every input.
+
+**Untested on real hardware by us.** The firmware runs in the web simulator at <https://seed.kilombino.com> and passes its tests; the microSD images are built with [seedsigner-os](https://github.com/Kilombino/seedsigner-os) but nobody on our side has booted them on a Pi yet. Use a seed with no real funds first.
+
+## Verifying a release image
+
+Releases carry `SHA256SUMS` signed with this fork's own key (not SeedSigner's): [`seedsigner-xbt_pubkey.asc`](seedsigner-xbt_pubkey.asc), fingerprint `DF04 5303 59B6 BDC8 2E05  66D7 3C2B C6F7 4555 C3D1`.
+
+```
+gpg --import seedsigner-xbt_pubkey.asc
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+The images are built reproducibly from this repository with [Kilombino/seedsigner-os](https://github.com/Kilombino/seedsigner-os) (branch `xbt`); its README says how to rebuild one and compare the hash.
+
+Source: branch `xbt` (this one). Spanish for every new string is in [Kilombino/seedsigner-translations](https://github.com/Kilombino/seedsigner-translations) branch `xbt`. Tests: `pytest` (the XBT ones are `tests/test_xbt_*.py` and `tests/test_flows_xbt_bond.py`).
+
+---
+
 # Build an offline, airgapped Bitcoin signing device for less than $50!
 
 ![Image of SeedSigners in Mini Pill Enclosures](docs/img/Mini_Pill_Main_Photo.jpg)
