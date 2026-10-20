@@ -21,6 +21,7 @@ from seedsigner.helpers.unified_sighash import (
     SIGHASH_UNIFIED_ALL, UnifiedSighashError, psbt_unified_sighash, sign_unified, unified_message_hash)
 from seedsigner.models import fidelity_bond
 from seedsigner.models.fidelity_bond import FidelityBondError
+from seedsigner.models.psbt_refusal import PSBTInputAmountVerificationError, PSBTRefusal, PSBTSighashModeError
 from seedsigner.models.psbt_parser import PSBTParser
 from seedsigner.models.seed import Seed
 from seedsigner.models.settings_definition import SettingsConstants
@@ -199,19 +200,32 @@ class TestRegtestBondVector:
 
 # ------------------------------------------------------------------ what must be refused
 
-def _parse(psbt):
-    return PSBTParser(roundtrip(psbt), seed=seed(), network=SettingsConstants.REGTEST)
+def _parse(psbt, xbt_mode=False):
+    return PSBTParser(roundtrip(psbt), seed=seed(), network=SettingsConstants.REGTEST, xbt_mode=xbt_mode)
+
+
+class TestBondSighash:
+    """A bond is signed 0x21 whatever the PSBT names (None/0x01/0x21) and whatever the mode."""
+
+    @pytest.mark.parametrize("asked", [None, 0x01, SIGHASH_UNIFIED_ALL])
+    @pytest.mark.parametrize("xbt_mode", [False, True])
+    def test_always_0x21(self, asked, xbt_mode):
+        psbt = roundtrip(bond_psbt(sighash=asked))
+        parser = PSBTParser(psbt, seed=seed(), network=SettingsConstants.REGTEST, xbt_mode=xbt_mode)
+        assert parser.unified_inputs == [0] and parser.all_unified
+        parser.sign()
+        trimmed = PSBTParser.trim(psbt)
+        assert trimmed.inputs[0].sighash_type == SIGHASH_UNIFIED_ALL   # finalizers agree with the sig
+        (sig,) = trimmed.inputs[0].partial_sigs.values()
+        assert sig.hex() == JAM_SIGNATURE
+
+    @pytest.mark.parametrize("asked", [0x02, 0x03, 0x81, 0x22, 0xa1])
+    def test_other_hash_types_are_refused(self, asked):
+        with pytest.raises(PSBTSighashModeError):
+            _parse(bond_psbt(sighash=asked))
 
 
 class TestRefusals:
-    def test_no_sighash_type(self):
-        with pytest.raises(FidelityBondError, match="0x21"):
-            _parse(bond_psbt(sighash=None))
-
-    def test_plain_sighash_all(self):
-        with pytest.raises(FidelityBondError, match="0x21"):
-            _parse(bond_psbt(sighash=0x01))
-
     def test_locktime_before_the_bond_unlocks(self):
         p = bond_psbt()
         p.locktime = BOND_LOCKTIME - 1
@@ -250,27 +264,21 @@ class TestRefusals:
         p = bond_psbt()
         other = Transaction.parse(bytes.fromhex(SPEND_TX))
         p.inputs[0].non_witness_utxo = other
-        with pytest.raises(FidelityBondError, match="previous transaction"):
+        with pytest.raises(PSBTInputAmountVerificationError, match="previous transaction"):
             _parse(p)
 
     def test_amount_that_disagrees_with_the_previous_transaction(self):
         p = bond_psbt()
         p.inputs[0].witness_utxo.value = BOND_VALUE - 1
-        with pytest.raises(FidelityBondError, match="amount"):
+        with pytest.raises(PSBTInputAmountVerificationError, match="amount"):
             _parse(p)
 
     def test_witness_script_of_another_address(self):
         p = bond_psbt(non_witness=False)
         other_script = fidelity_bond.make_bond_script(BOND_LOCKTIME + 2678400, bytes.fromhex(BOND_PUBKEY))
         p.inputs[0].witness_script = script.Script(other_script)
-        # Not the coins' script: either not recognised as this bond or refused, never signed.
-        try:
-            parser = _parse(p)
-        except FidelityBondError:
-            return
-        assert not parser.is_bond_spend
-        with pytest.raises(Exception):
-            sign_unified(parser.psbt, parser.root)
+        with pytest.raises(PSBTRefusal):
+            _parse(p)
 
 
 # ------------------------------------------------------------------ the template
@@ -300,43 +308,146 @@ class TestTemplate:
 
 # ------------------------------------------------------------------ 0x21 on an ordinary input
 
-class TestUnifiedP2WPKH:
-    def test_p2wpkh_input_asking_for_0x21_gets_it(self):
-        r = root()
-        child = r.derive("m/84h/1h/0h/0/0")
-        pub = child.key.get_public_key()
-        spk = script.p2wpkh(pub)
-        tx = Transaction.parse(bytes.fromhex(SPEND_TX))
-        tx.vin[0].witness = script.Witness([])
-        tx.locktime = 0
-        tx.vin[0].sequence = 0xFFFFFFFD
-        psbt = PSBT(Transaction.parse(tx.serialize()))
-        inp = psbt.inputs[0]
-        inp.witness_utxo = TransactionOutput(100_000, spk)
-        inp.bip32_derivations[pub] = DerivationPath(r.my_fingerprint, bip32.parse_path("m/84h/1h/0h/0/0"))
-        inp.sighash_type = SIGHASH_UNIFIED_ALL
-        psbt = roundtrip(psbt)
-        parser = PSBTParser(psbt, seed=seed(), network=SettingsConstants.REGTEST)
-        assert not parser.is_bond_spend and parser.has_unified_sighash
-        assert psbt.sign_with(parser.root) == 0
-        assert sign_unified(psbt, parser.root) == 1
-        (signer, sig), = psbt.inputs[0].partial_sigs.items()
+def _single_input_psbt(spk, derivations, value=100_000, sighash=None, taproot=False, n_inputs=1, non_witness=False):
+    """A PSBT spending `n_inputs` coins locked to `spk` (the regtest spend's outputs)."""
+    tx = Transaction.parse(bytes.fromhex(SPEND_TX))
+    tx.vin[0].witness = script.Witness([])
+    tx.locktime = 0
+    tx.vin[0].sequence = 0xFFFFFFFD
+    for k in range(1, n_inputs):
+        vin = copy.deepcopy(tx.vin[0]); vin.vout = k; tx.vin.append(vin)
+    psbt = PSBT(Transaction.parse(tx.serialize()))
+    for inp in psbt.inputs:
+        if non_witness:
+            prev = Transaction.parse(bytes.fromhex(FUND_TX))
+            prev.vout = [TransactionOutput(value, spk) for _ in range(n_inputs)]
+            inp.non_witness_utxo = prev
+            # point at the fake previous transaction
+        else:
+            inp.witness_utxo = TransactionOutput(value, spk)
+        for pub, der in derivations:
+            if taproot:
+                inp.taproot_bip32_derivations[pub] = ([], der)
+            else:
+                inp.bip32_derivations[pub] = der
+        if sighash is not None:
+            inp.sighash_type = sighash
+    if non_witness:
+        txid = psbt.inputs[0].non_witness_utxo.txid()
+        for k, vin in enumerate(psbt.tx.vin):
+            psbt.inputs[k].txid = txid
+    return roundtrip(psbt)
+
+
+def _key(path):
+    r = root()
+    child = r.derive(path)
+    return child, child.key.get_public_key(), DerivationPath(r.my_fingerprint, bip32.parse_path(path))
+
+
+class TestXbtMode:
+    @pytest.mark.parametrize("asked", [None, 0x01, SIGHASH_UNIFIED_ALL])
+    def test_p2wpkh_signed_0x21_whatever_it_asks(self, asked):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)], sighash=asked)
+        parser = _parse_xbt(psbt)
+        assert parser.all_unified and not parser.is_bond_spend
+        parser.sign()
+        trimmed = PSBTParser.trim(psbt)
+        assert trimmed.inputs[0].sighash_type == SIGHASH_UNIFIED_ALL
+        (signer, sig), = trimmed.inputs[0].partial_sigs.items()
         assert sig[-1] == SIGHASH_UNIFIED_ALL
         assert signer.verify(ec.Signature.parse(sig[:-1]), psbt_unified_sighash(psbt, 0))
 
-    def test_plain_psbt_still_signs_the_old_way(self):
-        """No sighash requested: unchanged SeedSigner behaviour (SIGHASH_ALL)."""
-        r = root()
-        child = r.derive("m/84h/1h/0h/0/0")
-        pub = child.key.get_public_key()
-        tx = Transaction.parse(bytes.fromhex(SPEND_TX))
-        tx.vin[0].witness = script.Witness([])
-        psbt = PSBT(Transaction.parse(tx.serialize()))
-        psbt.inputs[0].witness_utxo = TransactionOutput(100_000, script.p2wpkh(pub))
-        psbt.inputs[0].bip32_derivations[pub] = DerivationPath(r.my_fingerprint, bip32.parse_path("m/84h/1h/0h/0/0"))
+    def test_p2sh_p2wpkh_and_p2pkh(self):
+        _, pub, der = _key("m/49h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2sh(script.p2wpkh(pub)), [(pub, der)])
+        psbt.inputs[0].redeem_script = script.p2wpkh(pub)
         psbt = roundtrip(psbt)
-        parser = PSBTParser(psbt, seed=seed(), network=SettingsConstants.REGTEST)
+        parser = _parse_xbt(psbt); parser.sign()
+        (signer, sig), = psbt.inputs[0].partial_sigs.items()
+        assert signer.verify(ec.Signature.parse(sig[:-1]), psbt_unified_sighash(psbt, 0))
+
+        _, pub, der = _key("m/44h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2pkh(pub), [(pub, der)])
+        parser = _parse_xbt(psbt); parser.sign()
+        (signer, sig), = psbt.inputs[0].partial_sigs.items()
+        assert signer.verify(ec.Signature.parse(sig[:-1]), psbt_unified_sighash(psbt, 0))
+
+    def test_taproot_key_path(self):
+        child, pub, der = _key("m/86h/1h/0h/0/0")
+        tweaked = child.key.taproot_tweak(b"")
+        psbt = _single_input_psbt(script.p2tr(pub), [(pub, der)], taproot=True)
+        parser = _parse_xbt(psbt)
+        parser.sign()
+        trimmed = PSBTParser.trim(psbt)
+        (sig,) = trimmed.inputs[0].final_scriptwitness.items
+        assert len(sig) == 65 and sig[-1] == SIGHASH_UNIFIED_ALL
+        assert tweaked.get_public_key().schnorr_verify(ec.SchnorrSig.parse(sig[:64]), psbt_unified_sighash(psbt, 0))
+
+    @pytest.mark.parametrize("asked", [0x02, 0x03, 0x81, 0x83])
+    def test_exotic_hash_types_are_refused(self, asked):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        with pytest.raises(PSBTSighashModeError):
+            _parse_xbt(_single_input_psbt(script.p2wpkh(pub), [(pub, der)], sighash=asked))
+
+    def test_multi_input_segwit_without_prev_tx_is_fine_with_0x21(self):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2)
+        parser = _parse_xbt(psbt)
+        parser.sign()
+        assert PSBTParser.sig_count(psbt) == 2
+
+
+def _parse_xbt(psbt):
+    return PSBTParser(psbt, seed=seed(), network=SettingsConstants.REGTEST, xbt_mode=True)
+
+
+class TestXbtModeOff:
+    def test_psbt_asking_for_0x21_is_refused(self):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        with pytest.raises(PSBTSighashModeError, match="Turn on XBT mode"):
+            _parse(_single_input_psbt(script.p2wpkh(pub), [(pub, der)], sighash=SIGHASH_UNIFIED_ALL))
+
+    def test_plain_psbt_signs_the_old_way(self):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)])
+        parser = _parse(psbt)
         assert not parser.has_unified_sighash
-        assert psbt.sign_with(parser.root) == 1
-        assert sign_unified(psbt, parser.root) == 0
-        assert list(psbt.inputs[0].partial_sigs.values())[0][-1] == 0x01
+        parser.sign()
+        assert list(parser.psbt.inputs[0].partial_sigs.values())[0][-1] == 0x01
+        assert PSBTParser.trim(parser.psbt).inputs[0].sighash_type is None
+
+    def test_multi_input_segwit_needs_previous_transactions(self):
+        """CVE-2020-14199: stricter than upstream for old-style signatures."""
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        with pytest.raises(PSBTInputAmountVerificationError, match="CVE-2020-14199"):
+            _parse(_single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2))
+        psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2, non_witness=True)
+        parser = _parse(psbt)
+        assert parser.input_amount == 200_000
+        parser.sign()
+        assert PSBTParser.sig_count(parser.psbt) == 2
+
+    def test_legacy_without_previous_transaction_is_refused(self):
+        _, pub, der = _key("m/44h/1h/0h/0/0")
+        with pytest.raises(PSBTInputAmountVerificationError):
+            _parse(_single_input_psbt(script.p2pkh(pub), [(pub, der)]))
+
+    def test_input_without_any_utxo_is_refused(self):
+        _, pub, der = _key("m/84h/1h/0h/0/0")
+        psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)])
+        psbt.inputs[0].witness_utxo = None
+        with pytest.raises(PSBTRefusal):
+            _parse(psbt)
+
+
+class TestSettingsQR:
+    def test_xbt_mode_setting(self):
+        from seedsigner.models.settings import Settings
+        from seedsigner.models.settings_definition import SettingsDefinition
+        entry = SettingsDefinition.get_settings_entry(SettingsConstants.SETTING__XBT_MODE)
+        assert entry.abbreviated_name == "xbt"
+        assert entry.default_value == SettingsConstants.OPTION__ENABLED
+        name, parsed = Settings.parse_settingsqr("settings::v1 name=Phone xbt=D")
+        assert parsed[SettingsConstants.SETTING__XBT_MODE] == SettingsConstants.OPTION__DISABLED

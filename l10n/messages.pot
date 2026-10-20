@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: seedsigner 0.8.7\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-03-05 22:02+0000\n"
+"POT-Creation-Date: 2026-10-20 21:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -173,6 +173,38 @@ msgstr ""
 
 #: src/seedsigner/gui/screens/psbt_screens.py
 msgid "Click to approve this transaction"
+msgstr ""
+
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "For XBT (BLAKE2b) · sighash 0x21"
+msgstr ""
+
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "SHA-256 chain · bonds 0x21"
+msgstr ""
+
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "For the SHA-256 chain · XBT off"
+msgstr ""
+
+#. A JoinMarket fidelity bond: coins timelocked to show a maker is serious
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "Fidelity Bond"
+msgstr ""
+
+#. The date (YYYY-MM-DD, UTC) a fidelity bond's timelock ends
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "unlocks"
+msgstr ""
+
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "derivation"
+msgstr ""
+
+#. The signature only works on the Bitcoin BLAKE2b chain, so it cannot be
+#. replayed on the SHA-256 chain
+#: src/seedsigner/gui/screens/psbt_screens.py
+msgid "XBT replay-safe (0x21)"
 msgstr ""
 
 #: src/seedsigner/gui/screens/scan_screens.py
@@ -570,6 +602,103 @@ msgstr ""
 msgid "Next {}"
 msgstr ""
 
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: the witness script is not the one the coins are locked to."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: the previous transaction does not match its txid."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: the amount does not match the previous transaction."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid ""
+"Bond input {} is locked to a block height, not a date. Not a JoinMarket "
+"bond."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: the transaction's locktime is before the bond unlocks."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: a final sequence would disable the timelock."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid ""
+"Bond input {}: its locktime is not the 1st of a month. Not a JoinMarket "
+"bond."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: the PSBT does not say which key of this seed it uses."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: expected key {}, the PSBT says {}."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {} belongs to another seed."
+msgstr ""
+
+#: src/seedsigner/models/fidelity_bond.py
+msgid "Bond input {}: this seed does not derive the bond's key."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid ""
+"Input {} asks for sighash 0x{:02x}. This device only signs 0x21 "
+"(SIGHASH_ALL) for XBT."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {} has no previous output: cannot sign it for XBT."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid ""
+"This transaction asks for XBT signatures (sighash 0x{:02x}). Turn on XBT "
+"mode in Settings to sign it."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {} has no previous output: cannot sign for XBT."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {} has no utxo data: this transaction is missing required data."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid ""
+"Input {} ({}) has no previous transaction to verify its amount against, "
+"so the fee cannot be trusted."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid ""
+"Input {}: a multi-input segwit transaction without the previous "
+"transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with "
+"full previous transactions, or sign it in XBT mode."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {}: its outpoint is not in its previous transaction."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {}: its previous transaction does not match the txid it spends."
+msgstr ""
+
+#: src/seedsigner/models/psbt_parser.py
+msgid "Input {}: its amount does not match its previous transaction."
+msgstr ""
+
 #: src/seedsigner/models/settings_definition.py
 msgid "Enabled"
 msgstr ""
@@ -727,6 +856,14 @@ msgid "Denomination display"
 msgstr ""
 
 #: src/seedsigner/models/settings_definition.py
+msgid "XBT mode (BLAKE2b)"
+msgstr ""
+
+#: src/seedsigner/models/settings_definition.py
+msgid "Signs with sighash 0x21"
+msgstr ""
+
+#: src/seedsigner/models/settings_definition.py
 msgid "Bitcoin network"
 msgstr ""
 
@@ -848,6 +985,70 @@ msgid "Parsing PSBT..."
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
+msgid "XBT Mode"
+msgstr ""
+
+#. Bitcoin BLAKE2b is the chain the signatures are made for
+#: src/seedsigner/views/psbt_views.py
+msgid "Bitcoin BLAKE2b (XBT)"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid ""
+"Signing with sighash 0x21: valid only on the BLAKE2b chain, it cannot be "
+"replayed on the SHA-256 chain."
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py src/seedsigner/views/view.py
+msgid "Continue"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Mixed Signing"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Bonds signed for XBT"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid ""
+"XBT mode is off, but fidelity bond inputs are always signed with sighash "
+"0x21 (BLAKE2b chain only)."
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "XBT Mode Off"
+msgstr ""
+
+#. The original Bitcoin chain, as opposed to Bitcoin BLAKE2b (XBT)
+#: src/seedsigner/views/psbt_views.py
+msgid "SHA-256 chain"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid ""
+"Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay "
+"protection. Turn on XBT mode in Settings to sign for XBT."
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Will Not Sign"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Unsafe transaction"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Cannot sign this"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Discard transaction"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
 msgid "Unsupported Script Type!"
 msgstr ""
 
@@ -855,10 +1056,6 @@ msgstr ""
 msgid ""
 "Transaction has unsupported input script type, please verify your change "
 "addresses."
-msgstr ""
-
-#: src/seedsigner/views/psbt_views.py src/seedsigner/views/view.py
-msgid "Continue"
 msgstr ""
 
 #. User will receive no change back; the inputs to this transaction are fully
@@ -929,10 +1126,6 @@ msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
 msgid "Address Verification Failed"
-msgstr ""
-
-#: src/seedsigner/views/psbt_views.py
-msgid "Discard transaction"
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py

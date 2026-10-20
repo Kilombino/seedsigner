@@ -36,6 +36,7 @@ class TestXbtBondFlows(FlowTest):
             FlowStep(scan_views.ScanView, before_run=load),
             FlowStep(psbt_views.PSBTSelectSeedView, screen_return_value=0),
             FlowStep(psbt_views.PSBTOverviewView, screen_return_value=0),
+            FlowStep(psbt_views.PSBTSigningModeView, screen_return_value=0),
             FlowStep(psbt_views.PSBTFidelityBondView, screen_return_value=0),
             FlowStep(psbt_views.PSBTNoChangeWarningView, screen_return_value=0),
             FlowStep(psbt_views.PSBTMathView, screen_return_value=0),
@@ -47,8 +48,8 @@ class TestXbtBondFlows(FlowTest):
         (sig,) = signed[0].inputs[0].partial_sigs.values()
         assert sig.hex() == JAM_SIGNATURE
 
-    def test_bond_without_unified_sighash_is_refused(self):
-        load = self._load(bond_psbt(sighash=None))
+    def test_bond_of_the_wrong_timenumber_is_refused(self):
+        load = self._load(bond_psbt(path="m/84h/1h/0h/2/81"))
         self.run_sequence([
             FlowStep(MainMenuView, button_data_selection=MainMenuView.SCAN),
             FlowStep(scan_views.ScanView, before_run=load),

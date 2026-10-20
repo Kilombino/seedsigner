@@ -17,6 +17,7 @@ Nothing here trusts the coordinator's labels: the locktime is read from the
 script, the key is derived from the seed and compared, and the derivation index
 must be the timenumber of that very locktime.
 """
+from gettext import gettext as _
 import calendar
 import datetime
 from binascii import hexlify
@@ -26,7 +27,7 @@ from typing import Optional
 from embit import bip32, script
 from embit.psbt import PSBT
 
-from seedsigner.helpers.unified_sighash import SIGHASH_UNIFIED_ALL
+from seedsigner.models.psbt_refusal import PSBTRefusal
 
 
 OP_CHECKLOCKTIMEVERIFY = 0xB1
@@ -40,9 +41,9 @@ SEQUENCE_FINAL = 0xFFFFFFFF
 HARDENED = 0x80000000
 
 
-class FidelityBondError(Exception):
+class FidelityBondError(PSBTRefusal):
     """A bond input that must not be signed. The message is shown to the user."""
-    pass
+    dire = True
 
 
 def timenumber_to_locktime(timenumber: int) -> int:
@@ -151,34 +152,33 @@ def check_bond_input(psbt: PSBT, i: int, root: bip32.HDKey, coin_type: int) -> B
     locktime, pubkey = parse_bond_script(ws)
 
     if script.p2wsh(inp.witness_script).data != utxo.script_pubkey.data:
-        raise FidelityBondError("Bond input %d: the witness script is not the one the coins are locked to." % n)
+        raise FidelityBondError(_("Bond input {}: the witness script is not the one the coins are locked to.").format(n))
 
-    # Replay protection is mandatory for a bond: never sign it the SHA-256 way.
-    if inp.sighash_type != SIGHASH_UNIFIED_ALL:
-        raise FidelityBondError("Bond input %d must ask for the XBT unified sighash (0x21). Refusing to sign." % n)
+    # (The sighash is not checked here: a bond is always signed 0x21, whatever
+    # the PSBT asks and whatever the XBT mode; see PSBTParser._plan_sighashes.)
 
     # If the coordinator sent the previous transaction, it must be the real one.
     if inp.non_witness_utxo is not None:
         if inp.non_witness_utxo.txid() != vin.txid:
-            raise FidelityBondError("Bond input %d: the previous transaction does not match its txid." % n)
+            raise FidelityBondError(_("Bond input {}: the previous transaction does not match its txid.").format(n))
         prev_out = inp.non_witness_utxo.vout[vin.vout]
         if inp.witness_utxo is not None and (
             prev_out.value != inp.witness_utxo.value
             or prev_out.script_pubkey.data != inp.witness_utxo.script_pubkey.data
         ):
-            raise FidelityBondError("Bond input %d: the amount does not match the previous transaction." % n)
+            raise FidelityBondError(_("Bond input {}: the amount does not match the previous transaction.").format(n))
 
     # Timelock: the transaction must be valid once the bond unlocks, never earlier.
     if locktime < LOCKTIME_THRESHOLD:
-        raise FidelityBondError("Bond input %d is locked to a block height, not a date. Not a JoinMarket bond." % n)
+        raise FidelityBondError(_("Bond input {} is locked to a block height, not a date. Not a JoinMarket bond.").format(n))
     if psbt.tx.locktime < LOCKTIME_THRESHOLD or psbt.tx.locktime < locktime:
-        raise FidelityBondError("Bond input %d: the transaction's locktime is before the bond unlocks." % n)
+        raise FidelityBondError(_("Bond input {}: the transaction's locktime is before the bond unlocks.").format(n))
     if vin.sequence == SEQUENCE_FINAL:
-        raise FidelityBondError("Bond input %d: a final sequence would disable the timelock." % n)
+        raise FidelityBondError(_("Bond input {}: a final sequence would disable the timelock.").format(n))
 
     timenumber = locktime_to_timenumber(locktime)
     if timenumber is None:
-        raise FidelityBondError("Bond input %d: its locktime is not the 1st of a month. Not a JoinMarket bond." % n)
+        raise FidelityBondError(_("Bond input {}: its locktime is not the 1st of a month. Not a JoinMarket bond.").format(n))
 
     # The key: listed, ours, and at the bond path of that very timenumber.
     pub_obj = None
@@ -187,16 +187,14 @@ def check_bond_input(psbt: PSBT, i: int, root: bip32.HDKey, coin_type: int) -> B
         if p.sec() == pubkey:
             pub_obj, der = p, d
     if der is None:
-        raise FidelityBondError("Bond input %d: the PSBT does not say which key of this seed it uses." % n)
+        raise FidelityBondError(_("Bond input {}: the PSBT does not say which key of this seed it uses.").format(n))
     expected = [84 + HARDENED, coin_type + HARDENED, 0 + HARDENED, BOND_BRANCH, timenumber]
     if list(der.derivation) != expected:
-        raise FidelityBondError(
-            "Bond input %d: expected key %s, the PSBT says %s." % (
-                n, bip32.path_to_str(expected), bip32.path_to_str(der.derivation)))
+        raise FidelityBondError(_("Bond input {}: expected key {}, the PSBT says {}.").format(n, bip32.path_to_str(expected), bip32.path_to_str(der.derivation)))
     if der.fingerprint != root.my_fingerprint:
-        raise FidelityBondError("Bond input %d belongs to another seed." % n)
+        raise FidelityBondError(_("Bond input {} belongs to another seed.").format(n))
     if root.derive(der.derivation).key.sec() != pubkey:
-        raise FidelityBondError("Bond input %d: this seed does not derive the bond's key." % n)
+        raise FidelityBondError(_("Bond input {}: this seed does not derive the bond's key.").format(n))
 
     return BondInput(
         input_index=i,

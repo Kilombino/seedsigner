@@ -333,6 +333,8 @@ class SettingsConstants:
     SETTING__PERSISTENT_SETTINGS = "persistent_settings"
     SETTING__XPUB_QR_FORMAT = "xpub_qr"
     SETTING__BTC_DENOMINATION = "denomination"
+    # XBT fork: sign every input with the Bitcoin BLAKE2b unified sighash (0x21).
+    SETTING__XBT_MODE = "xbt_mode"
 
     SETTING__DISPLAY_CONFIGURATION = "display_config"
     SETTING__DISPLAY_COLOR_INVERTED = "color_inverted"
@@ -584,6 +586,16 @@ class SettingsDefinition:
                       selection_options=SettingsConstants.ALL_BTC_DENOMINATIONS,
                       default_value=SettingsConstants.BTC_DENOMINATION__THRESHOLD),
      
+
+        # XBT fork. On: every input is signed with the unified sighash 0x21, valid
+        # only on the Bitcoin BLAKE2b chain (replay-safe). Off: ordinary signatures
+        # for the SHA-256 chain. JoinMarket fidelity bonds are always signed 0x21.
+        SettingsEntry(category=SettingsConstants.CATEGORY__FEATURES,
+                      attr_name=SettingsConstants.SETTING__XBT_MODE,
+                      abbreviated_name="xbt",
+                      display_name=_mft("XBT mode (BLAKE2b)"),
+                      help_text=_mft("Signs with sighash 0x21"),
+                      default_value=SettingsConstants.OPTION__ENABLED),
 
         # Advanced options
         SettingsEntry(category=SettingsConstants.CATEGORY__FEATURES,

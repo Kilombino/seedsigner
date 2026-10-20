@@ -1,5 +1,7 @@
+import pytest
 from seedsigner.models.decode_qr import DecodeQR, DecodeQRStatus
 from seedsigner.models.psbt_parser import PSBTParser
+from seedsigner.models.psbt_refusal import PSBTInputAmountVerificationError
 from seedsigner.models.qr_type import QRType
 from seedsigner.models.seed import Seed
 
@@ -138,7 +140,11 @@ def test_base64_2_input_p2wsh():
     assert str(tx) == base64_psbt
 
     mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".split()
-    pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
+    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
+    with pytest.raises(PSBTInputAmountVerificationError):
+        PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert tx.inputs[0].witness_utxo.value == 10000000 # input amount 1 in psbt
 
@@ -199,7 +205,11 @@ def test_specter_multisig_animated_qr():
     tx = d.get_psbt()
 
     mnemonic = "zone zone zone zone zone abandon ability able abandon ability able abstract".split()
-    pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
+    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
+    with pytest.raises(PSBTInputAmountVerificationError):
+        PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert pp.input_amount == 1052818
 
@@ -237,7 +247,11 @@ def test_specter_multisig_animated_qr():
     tx2 = d2.get_psbt()
 
     mnemonic2 = "able bacon cable able bacon cable abandon abandon abandon abandon abandon access".split()
-    pp2 = PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET)
+    # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
+    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
+    with pytest.raises(PSBTInputAmountVerificationError):
+        PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET)
+    pp2 = PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert pp2.input_amount == 1052818
 

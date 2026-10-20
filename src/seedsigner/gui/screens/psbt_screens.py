@@ -764,6 +764,10 @@ class PSBTOpReturnScreen(ButtonListScreen):
 
 @dataclass
 class PSBTFinalizeScreen(ButtonListScreen):
+    # XBT fork: "all" (XBT mode, every input 0x21), "bonds" (only fidelity bonds
+    # 0x21) or "none" (SHA-256 chain signatures).
+    xbt_signing: str = None
+
     def __post_init__(self):
         # Customize defaults
         self.title = _("Sign Transaction")
@@ -783,6 +787,19 @@ class PSBTFinalizeScreen(ButtonListScreen):
             text=_("Click to approve this transaction"),
             screen_y=icon.screen_y + icon.height + 2*GUIConstants.COMPONENT_PADDING
         ))
+
+        if self.xbt_signing is not None:
+            if self.xbt_signing == "all":
+                mode_text, mode_color = _("For XBT (BLAKE2b) · sighash 0x21"), GUIConstants.ACCENT_COLOR
+            elif self.xbt_signing == "bonds":
+                mode_text, mode_color = _("SHA-256 chain · bonds 0x21"), GUIConstants.WARNING_COLOR
+            else:
+                mode_text, mode_color = _("For the SHA-256 chain · XBT off"), GUIConstants.WARNING_COLOR
+            self.components.append(TextArea(
+                text=mode_text,
+                font_color=mode_color,
+                screen_y=self.components[-1].screen_y + self.components[-1].height + GUIConstants.COMPONENT_PADDING,
+            ))
 
 
 

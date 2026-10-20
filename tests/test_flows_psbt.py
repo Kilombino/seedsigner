@@ -47,6 +47,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(seed_views.SeedFinalizeView, button_data_selection=seed_views.SeedFinalizeView.FINALIZE),
             FlowStep(seed_views.SeedOptionsView, is_redirect=True),
             FlowStep(psbt_views.PSBTOverviewView),
+            FlowStep(psbt_views.PSBTSigningModeView),  # XBT fork: which chain the signatures are for
             FlowStep(psbt_views.PSBTMathView),
             FlowStep(psbt_views.PSBTAddressDetailsView, button_data_selection=0),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.NEXT),
@@ -85,6 +86,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(seed_views.SeedFinalizeView, button_data_selection=seed_views.SeedFinalizeView.FINALIZE),
             FlowStep(seed_views.SeedOptionsView, is_redirect=True),
             FlowStep(psbt_views.PSBTOverviewView),
+            FlowStep(psbt_views.PSBTSigningModeView),  # XBT fork: which chain the signatures are for
             FlowStep(psbt_views.PSBTMathView),
         ]
 
@@ -107,6 +109,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(seed_views.SeedFinalizeView, button_data_selection=seed_views.SeedFinalizeView.FINALIZE),
             FlowStep(seed_views.SeedOptionsView, is_redirect=True),
             FlowStep(psbt_views.PSBTOverviewView),
+            FlowStep(psbt_views.PSBTSigningModeView),  # XBT fork: which chain the signatures are for
             FlowStep(psbt_views.PSBTMathView),
             FlowStep(psbt_views.PSBTAddressDetailsView, button_data_selection=0),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.SKIP_VERIFICATION),
@@ -119,6 +122,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(seed_views.SeedReviewPassphraseView, button_data_selection=seed_views.SeedReviewPassphraseView.DONE),
             FlowStep(seed_views.SeedOptionsView, is_redirect=True),
             FlowStep(psbt_views.PSBTOverviewView),
+            FlowStep(psbt_views.PSBTSigningModeView),  # XBT fork: which chain the signatures are for
             FlowStep(psbt_views.PSBTMathView),
             FlowStep(psbt_views.PSBTAddressDetailsView, button_data_selection=0),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.SKIP_VERIFICATION),
@@ -158,6 +162,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(seed_views.SeedFinalizeView, button_data_selection=seed_views.SeedFinalizeView.FINALIZE),
             FlowStep(seed_views.SeedOptionsView, is_redirect=True),
             FlowStep(psbt_views.PSBTOverviewView),
+            FlowStep(psbt_views.PSBTSigningModeView),  # XBT fork: which chain the signatures are for
             FlowStep(psbt_views.PSBTMathView),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.NEXT),
 

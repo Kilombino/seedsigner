@@ -1,3 +1,4 @@
+from gettext import gettext as _
 import logging
 from binascii import hexlify
 from embit import psbt, script, ec, bip32
@@ -8,8 +9,10 @@ from embit.ec import PublicKey
 from io import BytesIO
 from typing import List
 
-from seedsigner.helpers.unified_sighash import SIGHASH_UNIFIED_ALL
+from seedsigner.helpers.unified_sighash import SIGHASH_UNIFIED, SIGHASH_UNIFIED_ALL, UnifiedSighashError, input_kind
 from seedsigner.models import fidelity_bond
+from seedsigner.models.psbt_refusal import (PSBTInputAmountVerificationError, PSBTMissingInputUtxoError,
+    PSBTSighashModeError)
 from seedsigner.models.seed import Seed
 from seedsigner.models.settings import SettingsConstants
 
@@ -22,26 +25,35 @@ class OPCODES:
 
 
 class PSBTParser():
-    def __init__(self, p: PSBT, seed: Seed, network: str = SettingsConstants.MAINNET):
+    # Input types whose old-style sighash does NOT commit to the input amount (upstream #995).
+    UNCOMMITTED_AMOUNT_SCRIPT_TYPES = [None, "p2pkh", "p2sh"]
+    # Segwit v0: BIP143 commits only the signed input's own amount (CVE-2020-14199).
+    SEGWIT_V0_SCRIPT_TYPES = ["p2wpkh", "p2wsh", "p2sh-p2wpkh", "p2sh-p2wsh"]
+    # Hash types that may be named in a PSBT and still get this device's signature.
+    SIGNABLE_SIGHASH_TYPES = [None, 0x00, 0x01, SIGHASH_UNIFIED_ALL]
+
+    def __init__(self, p: PSBT, seed: Seed, network: str = SettingsConstants.MAINNET, xbt_mode: bool = False):
         self.psbt: PSBT = p
         self.seed = seed
         self.network = network
+        # XBT mode: every input is signed with the unified sighash 0x21.
+        self.xbt_mode = xbt_mode
 
         self.policy = None
         self.spend_amount = 0
         self.change_amount = 0
         self.change_data = []
         self.fee_amount = 0
-        self.input_amount = 0
+        self.input_amount = 0           # verified: see _verify_input_amounts
         self.num_inputs = 0
         self.destination_addresses = []
         self.destination_amounts = []
         self.op_return_data: bytes = None
 
         # XBT: JoinMarket fidelity bonds being spent (fidelity_bond.BondInput), and
-        # whether any input asks for the unified sighash (0x21).
+        # the inputs that will be signed with the unified sighash (0x21).
         self.bond_inputs: List[fidelity_bond.BondInput] = []
-        self.has_unified_sighash = False
+        self.unified_inputs: List[int] = []
 
         self.root = None
 
@@ -106,27 +118,110 @@ class PSBTParser():
         return True
 
 
-    def _parse_inputs(self):
-        self.input_amount = 0
-        self.num_inputs = len(self.psbt.inputs)
-        self.bond_inputs = []
-        self.has_unified_sighash = any(inp.sighash_type == SIGHASH_UNIFIED_ALL for inp in self.psbt.inputs)
-        if self.has_unified_sighash:
-            # The unified message commits to every input's amount and script, so
-            # every input must carry its previous output.
+    def _plan_sighashes(self):
+        """
+        Which inputs get the unified sighash 0x21. The rules, whatever the PSBT says:
+
+        * A JoinMarket fidelity-bond input: always 0x21, in either mode.
+        * XBT mode on: every input 0x21.
+        * XBT mode off: the old signatures (SIGHASH_ALL), for the SHA-256 chain.
+
+        A PSBT may name a hash type in PSBT_IN_SIGHASH_TYPE. An input that will be
+        signed 0x21 and names nothing, 0x00, 0x01 or 0x21 is signed 0x21 and the
+        field is rewritten to 0x21, so a finalizer that compares it with the
+        signature's last byte agrees. Any other hash type (NONE, SINGLE,
+        ANYONECANPAY) is refused rather than silently changed. With XBT mode off, an
+        input that names a unified hash type (0x20 bit) is refused: the PSBT is meant
+        for XBT and the user is told to turn XBT mode on.
+        """
+        self.unified_inputs = []
+        for i, inp in enumerate(self.psbt.inputs):
+            n = i + 1
+            asked = inp.sighash_type
+            unified = self.xbt_mode or fidelity_bond.is_bond_input(self.psbt, i)
+            if unified:
+                if asked not in PSBTParser.SIGNABLE_SIGHASH_TYPES:
+                    raise PSBTSighashModeError(_("Input {} asks for sighash 0x{:02x}. This device only signs 0x21 (SIGHASH_ALL) for XBT.").format(n, asked))
+                if inp.utxo is None:
+                    raise PSBTMissingInputUtxoError(_("Input {} has no previous output: cannot sign it for XBT.").format(n))
+                try:
+                    input_kind(self.psbt, i)
+                except UnifiedSighashError as e:
+                    raise PSBTSighashModeError(str(e))
+                self.unified_inputs.append(i)
+            elif asked is not None and asked & SIGHASH_UNIFIED:
+                raise PSBTSighashModeError(_("This transaction asks for XBT signatures (sighash 0x{:02x}). Turn on XBT mode in Settings to sign it.").format(asked))
+        if self.unified_inputs:
+            # The unified message commits to every input's amount and script.
             for i, inp in enumerate(self.psbt.inputs):
                 if inp.utxo is None:
-                    raise fidelity_bond.FidelityBondError("Input %d has no previous output: cannot sign it for XBT." % (i + 1))
-                if inp.sighash_type == SIGHASH_UNIFIED_ALL and inp.is_taproot:
-                    raise fidelity_bond.FidelityBondError("Input %d: Taproot with the XBT unified sighash is not supported yet." % (i + 1))
+                    raise PSBTMissingInputUtxoError(_("Input {} has no previous output: cannot sign for XBT.").format(i + 1))
+
+
+    def _verify_input_amounts(self):
+        """
+        Verify each input's declared amount before it is added to the total (upstream
+        SeedSigner PR #995, "Verify PSBT input amounts before displaying the fee",
+        ported to this release, with one rule stricter than upstream).
+
+        * Every input must carry witness_utxo or non_witness_utxo.
+        * A non_witness_utxo must hash to the txid the input spends, and a witness_utxo
+          next to it must equal its output.
+        * Signed with 0x21, nothing more is needed: the unified sighash commits to the
+          amount of every input, so a false amount only makes the signature invalid.
+        * Signed the old way, an input with only a witness_utxo is refused when its
+          sighash does not commit to the amount (legacy P2PKH/P2SH), and also, unlike
+          upstream, when it is segwit v0 in a transaction with more than one input:
+          BIP143 commits only to the signed input's own amount, which is
+          CVE-2020-14199 (double-signing for a hidden fee). Taproot commits to all.
+        """
+        total = 0
+        many = len(self.psbt.inputs) > 1
+        for i, inp in enumerate(self.psbt.inputs):
+            n = i + 1
+            if inp.non_witness_utxo is None:
+                if inp.witness_utxo is None:
+                    raise PSBTMissingInputUtxoError(_("Input {} has no utxo data: this transaction is missing required data.").format(n))
+                if i not in self.unified_inputs:
+                    script_type = PSBTParser._get_script_type(inp, inp.witness_utxo.script_pubkey)
+                    if script_type in PSBTParser.UNCOMMITTED_AMOUNT_SCRIPT_TYPES:
+                        raise PSBTInputAmountVerificationError(_("Input {} ({}) has no previous transaction to verify its amount against, so the fee cannot be trusted.").format(n, script_type))
+                    if many and script_type in PSBTParser.SEGWIT_V0_SCRIPT_TYPES:
+                        raise PSBTInputAmountVerificationError(_("Input {}: a multi-input segwit transaction without the previous transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with full previous transactions, or sign it in XBT mode.").format(n))
+            else:
+                vout = self.psbt.tx.vin[i].vout
+                if vout >= len(inp.non_witness_utxo.vout):
+                    raise PSBTMissingInputUtxoError(_("Input {}: its outpoint is not in its previous transaction.").format(n))
+                if inp.non_witness_utxo.txid() != self.psbt.tx.vin[i].txid:
+                    raise PSBTInputAmountVerificationError(_("Input {}: its previous transaction does not match the txid it spends.").format(n))
+                if inp.witness_utxo is not None:
+                    prevout = inp.non_witness_utxo.vout[vout]
+                    if prevout.value != inp.witness_utxo.value or prevout.script_pubkey.data != inp.witness_utxo.script_pubkey.data:
+                        raise PSBTInputAmountVerificationError(_("Input {}: its amount does not match its previous transaction.").format(n))
+            total += inp.utxo.value
+        self.input_amount = total
+
+
+    @staticmethod
+    def _get_script_type(scope, scriptpubkey) -> str:
+        """Like script_type(), but tells nested segwit p2sh apart from legacy p2sh (upstream #995)."""
+        script_type = scriptpubkey.script_type()
+        if script_type == "p2sh":
+            if scope.witness_script is not None:
+                script_type = "p2sh-p2wsh"
+            elif scope.redeem_script is not None and scope.redeem_script.script_type() == "p2wpkh":
+                script_type = "p2sh-p2wpkh"
+        return script_type
+
+
+    def _parse_inputs(self):
+        self.num_inputs = len(self.psbt.inputs)
+        self.bond_inputs = []
+        self._plan_sighashes()
+        self._verify_input_amounts()
         coin_type = 0 if self.network == SettingsConstants.MAINNET else 1
         for i, inp in enumerate(self.psbt.inputs):
-            if inp.witness_utxo:
-                self.input_amount += inp.witness_utxo.value
-                script_pubkey = inp.witness_utxo.script_pubkey
-            elif inp.non_witness_utxo:
-                self.input_amount += inp.utxo.value
-                script_pubkey = inp.script_pubkey
+            script_pubkey = inp.utxo.script_pubkey
 
             if fidelity_bond.is_bond_input(self.psbt, i):
                 # A JoinMarket fidelity bond: single-key P2WSH with a timelock,
@@ -256,10 +351,35 @@ class PSBTParser():
         return True
 
 
+    @property
+    def has_unified_sighash(self) -> bool:
+        return len(self.unified_inputs) > 0
+
+
+    @property
+    def all_unified(self) -> bool:
+        return len(self.unified_inputs) == len(self.psbt.inputs)
+
+
+    def sign(self) -> None:
+        """Sign with the selected seed, each input with the sighash _plan_sighashes chose."""
+        from seedsigner.helpers.unified_sighash import sign_unified
+        for i in self.unified_inputs:
+            # Also keeps embit's sign_with() off these inputs (it only signs SIGHASH_ALL).
+            self.psbt.inputs[i].sighash_type = SIGHASH_UNIFIED_ALL
+        if not self.all_unified:
+            self.psbt.sign_with(self.root)
+        if self.unified_inputs:
+            sign_unified(self.psbt, self.root, self.unified_inputs)
+
+
     @staticmethod
     def trim(tx):
         trimmed_psbt = psbt.PSBT(tx.tx)
         for i, inp in enumerate(tx.inputs):
+            if inp.sighash_type == SIGHASH_UNIFIED_ALL:
+                # Say so, so a finalizer agrees with the signatures' 0x21.
+                trimmed_psbt.inputs[i].sighash_type = SIGHASH_UNIFIED_ALL
             if inp.final_scriptwitness:
                 # Taproot sign; trim to only final_scriptwitness
                 # From BIP-371 and BIP-174, once final script witness is populated

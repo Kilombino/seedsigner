@@ -1,10 +1,10 @@
 from gettext import gettext as _
 
-from seedsigner.models.fidelity_bond import FidelityBondError
+from seedsigner.models.psbt_refusal import PSBTRefusal
 from seedsigner.models.psbt_parser import PSBTParser
 from seedsigner.models.settings import SettingsConstants
 from seedsigner.gui.components import FontAwesomeIconConstants, SeedSignerIconConstants
-from seedsigner.gui.screens.screen import (RET_CODE__BACK_BUTTON, ButtonListScreen, ButtonOption, WarningScreen, DireWarningScreen, QRDisplayScreen)
+from seedsigner.gui.screens.screen import (RET_CODE__BACK_BUTTON, ButtonListScreen, ButtonOption, LargeIconStatusScreen, WarningScreen, DireWarningScreen, QRDisplayScreen)
 from seedsigner.views.view import BackStackView, MainMenuView, NotYetImplementedView, View, Destination
 
 
@@ -101,15 +101,17 @@ class PSBTOverviewView(View):
                 self.controller.psbt_parser = PSBTParser(
                     self.controller.psbt,
                     seed=self.controller.psbt_seed,
-                    network=self.settings.get_value(SettingsConstants.SETTING__NETWORK)
+                    network=self.settings.get_value(SettingsConstants.SETTING__NETWORK),
+                    xbt_mode=self.settings.get_value(SettingsConstants.SETTING__XBT_MODE) == SettingsConstants.OPTION__ENABLED,
                 )
-            except FidelityBondError as e:
-                # XBT: a bond (or 0x21) input that must not be signed. Say why
-                # instead of crashing into the generic error screen.
+            except PSBTRefusal as e:
+                # A PSBT this fork will not sign (bond rules, sighash vs XBT mode,
+                # unverifiable input amounts). Say why instead of crashing into the
+                # generic error screen.
                 self.loading_screen.stop()
                 self.loading_screen = None
                 self.controller.psbt_parser = None
-                self.refusal = str(e)
+                self.refusal = e
             except Exception as e:
                 self.loading_screen.stop()
                 raise e
@@ -118,7 +120,7 @@ class PSBTOverviewView(View):
     def run(self):
         from seedsigner.gui.screens.psbt_screens import PSBTOverviewScreen
         if self.refusal:
-            return Destination(PSBTRefusedView, view_args={"reason": self.refusal}, skip_current_view=True)
+            return Destination(PSBTRefusedView, view_args={"reason": str(self.refusal), "dire": self.refusal.dire}, skip_current_view=True)
 
         psbt_parser = self.controller.psbt_parser
 
@@ -163,7 +165,56 @@ class PSBTOverviewView(View):
             self.controller.psbt_seed = None
             return Destination(BackStackView)
 
-        # XBT: a JoinMarket fidelity bond is shown on its own screen first.
+        # XBT: which chain these signatures are for, before anything else.
+        return Destination(PSBTSigningModeView)
+
+
+
+class PSBTSigningModeView(View):
+    """
+        XBT fork: the chain the signatures will be valid on, impossible to miss.
+        XBT mode on: everything 0x21 (Bitcoin BLAKE2b only, replay-safe). Off: the
+        SHA-256 chain's ordinary signatures, except fidelity bonds (always 0x21).
+    """
+    def run(self):
+        from seedsigner.gui.components import GUIConstants
+        psbt_parser: PSBTParser = self.controller.psbt_parser
+        if not psbt_parser:
+            return Destination(MainMenuView)
+
+        if psbt_parser.all_unified:
+            selected_menu_num = self.run_screen(
+                LargeIconStatusScreen,
+                title=_("XBT Mode"),
+                status_icon_name=SeedSignerIconConstants.INFO,
+                status_color=GUIConstants.ACCENT_COLOR,
+                # TRANSLATOR_NOTE: Bitcoin BLAKE2b is the chain the signatures are made for
+                status_headline=_("Bitcoin BLAKE2b (XBT)"),
+                text=_("Signing with sighash 0x21: valid only on the BLAKE2b chain, it cannot be replayed on the SHA-256 chain."),
+                button_data=[ButtonOption("Continue")],
+            )
+        elif psbt_parser.has_unified_sighash:
+            selected_menu_num = self.run_screen(
+                WarningScreen,
+                title=_("Mixed Signing"),
+                status_headline=_("Bonds signed for XBT"),
+                text=_("XBT mode is off, but fidelity bond inputs are always signed with sighash 0x21 (BLAKE2b chain only)."),
+                button_data=[ButtonOption("Continue")],
+            )
+        else:
+            selected_menu_num = self.run_screen(
+                WarningScreen,
+                title=_("XBT Mode Off"),
+                # TRANSLATOR_NOTE: The original Bitcoin chain, as opposed to Bitcoin BLAKE2b (XBT)
+                status_headline=_("SHA-256 chain"),
+                text=_("Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay protection. Turn on XBT mode in Settings to sign for XBT."),
+                button_data=[ButtonOption("Continue")],
+            )
+
+        if selected_menu_num == RET_CODE__BACK_BUTTON:
+            return Destination(BackStackView)
+
+        # A JoinMarket fidelity bond is shown on its own screen next.
         if psbt_parser.is_bond_spend:
             return Destination(PSBTFidelityBondView, view_args={"bond_num": 0})
 
@@ -226,16 +277,17 @@ class PSBTRefusedView(View):
         XBT: a PSBT this firmware will not sign, with the reason. Only route out
         is discarding it.
     """
-    def __init__(self, reason: str = ""):
+    def __init__(self, reason: str = "", dire: bool = True):
         super().__init__()
         self.reason = reason
+        self.dire = dire
 
 
     def run(self):
         self.run_screen(
-            DireWarningScreen,
+            DireWarningScreen if self.dire else WarningScreen,
             title=_("Will Not Sign"),
-            status_headline=_("Unsafe transaction"),
+            status_headline=_("Unsafe transaction") if self.dire else _("Cannot sign this"),
             text=self.reason,
             button_data=[ButtonOption("Discard transaction")],
             show_back_button=False,
@@ -611,7 +663,8 @@ class PSBTFinalizeView(View):
         
         selected_menu_num = self.run_screen(
             PSBTFinalizeScreen,
-            button_data=[self.APPROVE_PSBT]
+            button_data=[self.APPROVE_PSBT],
+            xbt_signing="all" if psbt_parser.all_unified else ("bonds" if psbt_parser.has_unified_sighash else "none"),
         )
 
         if selected_menu_num == RET_CODE__BACK_BUTTON:
@@ -620,11 +673,8 @@ class PSBTFinalizeView(View):
         else:
             # Sign PSBT
             sig_cnt = PSBTParser.sig_count(psbt)
-            psbt.sign_with(psbt_parser.root)
-            if psbt_parser.has_unified_sighash:
-                # XBT: embit skips inputs that ask for 0x21; sign those here.
-                from seedsigner.helpers.unified_sighash import sign_unified
-                sign_unified(psbt, psbt_parser.root)
+            # XBT: each input with the sighash the parser planned (0x21 or the old one).
+            psbt_parser.sign()
             trimmed_psbt = PSBTParser.trim(psbt)
 
             if sig_cnt == PSBTParser.sig_count(trimmed_psbt):
