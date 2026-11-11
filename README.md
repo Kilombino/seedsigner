@@ -1,8 +1,8 @@
-# SeedSigner XBT (BLAKE2b) — unofficial version
+# SeedSigner BTC (XBT) — unofficial version
 
-<p align="center"><img src="docs/img/seedsigner-xbt.jpg" alt="SeedSigner XBT (BLAKE2b)" width="420"></p>
+<p align="center"><img src="docs/img/seedsigner-xbt.jpg" alt="SeedSigner BTC (XBT)" width="420"></p>
 
-**SeedSigner XBT (BLAKE2b) is an unofficial version of [SeedSigner](https://github.com/SeedSigner/seedsigner) with support for Bitcoin (BLAKE2b). It is not affiliated with, reviewed by or endorsed by the SeedSigner project.** It is SeedSigner 0.8.7 plus:
+**SeedSigner BTC (XBT) is an unofficial version of [SeedSigner](https://github.com/SeedSigner/seedsigner) with support for Bitcoin (BLAKE2b). It is not affiliated with, reviewed by or endorsed by the SeedSigner project.** It is SeedSigner 0.8.7 plus:
 
 * **XBT mode** (Settings › *XBT mode (BLAKE2b)*, on by default; SettingsQR `xbt=E` / `xbt=D`). On: every input is signed with the **unified sighash `0x21`** (`SIGHASH_UNIFIED | SIGHASH_ALL`) of Bitcoin Knots BLAKE2b (`doc/unified-sighash.md`), so the signature is valid only on **Bitcoin (BLAKE2b)** and cannot be replayed on the SHA-256 chain. Off: ordinary signatures for the SHA-256 chain. One device signs for both chains; a screen after the transaction overview, and the sign screen, say which.
   * In XBT mode a PSBT naming no hash type, `0x00`, `0x01` or `0x21` is signed `0x21`, and `PSBT_IN_SIGHASH_TYPE` is written as `0x21` so finalizers agree. Any other hash type is refused. Taproot is signed on the key path only.
