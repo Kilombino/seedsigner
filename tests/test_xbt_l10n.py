@@ -15,7 +15,7 @@ def test_every_xbt_string_is_in_the_pot_and_translated_to_spanish():
     xbt = _ids(os.path.join(ROOT, "l10n", "xbt-es.po"))
     pot = _ids(os.path.join(ROOT, "l10n", "messages.pot"))
     es = _ids(os.path.join(ROOT, "src", "seedsigner", "resources", "seedsigner-translations", "l10n", "es", "LC_MESSAGES", "messages.po"))
-    assert len(xbt) == 42
+    assert len(xbt) == 52
     for msgid, msgstr in xbt.items():
         assert msgid in pot, msgid
         assert es.get(msgid) == msgstr and msgstr, msgid

@@ -421,12 +421,15 @@ class TestXbtModeOff:
         assert PSBTParser.trim(parser.psbt).inputs[0].sighash_type is None
 
     def test_multi_input_segwit_needs_previous_transactions(self):
-        """CVE-2020-14199: stricter than upstream for old-style signatures."""
+        """CVE-2020-14199: signed old-style, but the unprovable inputs are flagged."""
         _, pub, der = _key("m/84h/1h/0h/0/0")
-        with pytest.raises(PSBTInputAmountVerificationError, match="CVE-2020-14199"):
-            _parse(_single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2))
+        flagged = _parse(_single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2))
+        assert flagged.unverified_amount_inputs == [1, 2]
+        flagged.sign()
+        assert PSBTParser.sig_count(flagged.psbt) == 2
         psbt = _single_input_psbt(script.p2wpkh(pub), [(pub, der)], n_inputs=2, non_witness=True)
         parser = _parse(psbt)
+        assert parser.unverified_amount_inputs == []
         assert parser.input_amount == 200_000
         parser.sign()
         assert PSBTParser.sig_count(parser.psbt) == 2

@@ -54,6 +54,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.NEXT),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.NEXT),
             FlowStep(psbt_views.PSBTFinalizeView, button_data_selection=psbt_views.PSBTFinalizeView.APPROVE_PSBT),
+            FlowStep(psbt_views.PSBTSignedExportView, button_data_selection=psbt_views.PSBTSignedExportView.SHOW_QR),
             FlowStep(psbt_views.PSBTSignedQRDisplayView),
             FlowStep(MainMenuView)
         ])
@@ -127,6 +128,7 @@ class TestPSBTFlows(FlowTest):
             FlowStep(psbt_views.PSBTAddressDetailsView, button_data_selection=0),
             FlowStep(psbt_views.PSBTChangeDetailsView, button_data_selection=psbt_views.PSBTChangeDetailsView.SKIP_VERIFICATION),
             FlowStep(psbt_views.PSBTFinalizeView, button_data_selection=psbt_views.PSBTFinalizeView.APPROVE_PSBT),
+            FlowStep(psbt_views.PSBTSignedExportView, button_data_selection=psbt_views.PSBTSignedExportView.SHOW_QR),
             FlowStep(psbt_views.PSBTSignedQRDisplayView),
             FlowStep(MainMenuView),
         ])
@@ -171,6 +173,7 @@ class TestPSBTFlows(FlowTest):
 
             # Should be able to sign the psbt
             FlowStep(psbt_views.PSBTFinalizeView, button_data_selection=psbt_views.PSBTFinalizeView.APPROVE_PSBT),
+            FlowStep(psbt_views.PSBTSignedExportView, button_data_selection=psbt_views.PSBTSignedExportView.SHOW_QR),
             FlowStep(psbt_views.PSBTSignedQRDisplayView),
             FlowStep(MainMenuView)
         ])

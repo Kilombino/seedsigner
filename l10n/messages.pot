@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: seedsigner 0.8.7\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-20 21:12+0000\n"
+"POT-Creation-Date: 2026-11-11 23:32+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -681,13 +681,6 @@ msgid ""
 msgstr ""
 
 #: src/seedsigner/models/psbt_parser.py
-msgid ""
-"Input {}: a multi-input segwit transaction without the previous "
-"transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with "
-"full previous transactions, or sign it in XBT mode."
-msgstr ""
-
-#: src/seedsigner/models/psbt_parser.py
 msgid "Input {}: its outpoint is not in its previous transaction."
 msgstr ""
 
@@ -1033,6 +1026,22 @@ msgid ""
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
+msgid "Check the Fee"
+msgstr ""
+
+#. The device cannot check the amounts of these inputs, so the fee shown may be
+#. wrong
+#: src/seedsigner/views/psbt_views.py
+msgid "Inputs {}"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid ""
+"No previous transactions: the fee cannot be proven. Check it in your "
+"wallet."
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
 msgid "Will Not Sign"
 msgstr ""
 
@@ -1130,6 +1139,48 @@ msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
 msgid "Approve transaction"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Show QR"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Save to microSD"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Signed PSBT"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "microSD"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Could not save"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Insert a FAT-formatted microSD card and try again. ({})"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py src/seedsigner/views/seed_views.py
+msgid "Try again"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid "Saved"
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py
+msgid ""
+"{}\n"
+"Open it in Sparrow/Shrike: File > Open Transaction."
+msgstr ""
+
+#: src/seedsigner/views/psbt_views.py src/seedsigner/views/seed_views.py
+msgid "Done"
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
@@ -1271,10 +1322,6 @@ msgid "Checksum failure; not a valid seed phrase."
 msgstr ""
 
 #: src/seedsigner/views/seed_views.py
-msgid "Done"
-msgstr ""
-
-#: src/seedsigner/views/seed_views.py
 msgid "Edit passphrase"
 msgstr ""
 
@@ -1406,10 +1453,6 @@ msgstr ""
 
 #: src/seedsigner/views/seed_views.py
 msgid "BIP-85 Child Index must be between 0 and 2^31-1."
-msgstr ""
-
-#: src/seedsigner/views/seed_views.py
-msgid "Try again"
 msgstr ""
 
 #: src/seedsigner/views/seed_views.py

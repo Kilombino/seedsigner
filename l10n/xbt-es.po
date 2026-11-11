@@ -72,8 +72,6 @@ msgstr "La entrada {} no trae datos del utxo: a esta transacción le faltan dato
 msgid "Input {} ({}) has no previous transaction to verify its amount against, so the fee cannot be trusted."
 msgstr "La entrada {} ({}) no trae la transacción anterior con la que comprobar su importe, así que la comisión no es fiable."
 
-msgid "Input {}: a multi-input segwit transaction without the previous transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with full previous transactions, or sign it in XBT mode."
-msgstr "Entrada {}: una transacción segwit de varias entradas sin las transacciones anteriores no puede demostrar su comisión (CVE-2020-14199). Exporta el PSBT con las transacciones anteriores completas, o fírmalo en modo XBT."
 
 msgid "Input {}: its outpoint is not in its previous transaction."
 msgstr "Entrada {}: su outpoint no está en su transacción anterior."
@@ -125,3 +123,38 @@ msgstr "Transacción insegura"
 
 msgid "Cannot sign this"
 msgstr "No se puede firmar"
+
+msgid "Check the Fee"
+msgstr "Revisa comisión"
+
+msgid "Inputs {}"
+msgstr "Entradas {}"
+
+msgid "No previous transactions: the fee cannot be proven. Check it in your wallet."
+msgstr "Sin transacciones previas la comisión no se puede comprobar. Revísala en tu cartera."
+
+msgid "Show QR"
+msgstr "Mostrar QR"
+
+msgid "Save to microSD"
+msgstr "Guardar en SD"
+
+msgid "Signed PSBT"
+msgstr "PSBT firmado"
+
+msgid "microSD"
+msgstr "microSD"
+
+msgid "Could not save"
+msgstr "No se pudo guardar"
+
+msgid "Insert a FAT-formatted microSD card and try again. ({})"
+msgstr "Mete una microSD formateada en FAT y vuelve a intentarlo. ({})"
+
+msgid "Saved"
+msgstr "Guardado"
+
+msgid "{}\n"
+"Open it in Sparrow/Shrike: File > Open Transaction."
+msgstr "{}\n"
+"Ábrelo en Sparrow/Shrike: Archivo > Abrir transacción."

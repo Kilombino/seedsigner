@@ -141,9 +141,10 @@ def test_base64_2_input_p2wsh():
 
     mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".split()
     # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
-    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
-    with pytest.raises(PSBTInputAmountVerificationError):
-        PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    # previous transactions is signed but flagged (CVE-2020-14199, the user is
+    # warned); in XBT mode (0x21) every amount is committed, nothing to flag.
+    old_way = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    assert old_way.unverified_amount_inputs
     pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert tx.inputs[0].witness_utxo.value == 10000000 # input amount 1 in psbt
@@ -206,9 +207,10 @@ def test_specter_multisig_animated_qr():
 
     mnemonic = "zone zone zone zone zone abandon ability able abandon ability able abstract".split()
     # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
-    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
-    with pytest.raises(PSBTInputAmountVerificationError):
-        PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    # previous transactions is signed but flagged (CVE-2020-14199, the user is
+    # warned); in XBT mode (0x21) every amount is committed, nothing to flag.
+    old_way = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET)
+    assert old_way.unverified_amount_inputs
     pp = PSBTParser(p=tx, seed=Seed(mnemonic), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert pp.input_amount == 1052818
@@ -248,9 +250,10 @@ def test_specter_multisig_animated_qr():
 
     mnemonic2 = "able bacon cable able bacon cable abandon abandon abandon abandon abandon access".split()
     # XBT fork: signed the old way, a multi-input segwit v0 PSBT without the
-    # previous transactions is refused (CVE-2020-14199); in XBT mode (0x21) it is fine.
-    with pytest.raises(PSBTInputAmountVerificationError):
-        PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET)
+    # previous transactions is signed but flagged (CVE-2020-14199, the user is
+    # warned); in XBT mode (0x21) every amount is committed, nothing to flag.
+    old_way2 = PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET)
+    assert old_way2.unverified_amount_inputs
     pp2 = PSBTParser(p=tx2, seed=Seed(mnemonic2), network=SettingsConstants.TESTNET, xbt_mode=True)
 
     assert pp2.input_amount == 1052818

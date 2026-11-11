@@ -214,20 +214,59 @@ class PSBTSigningModeView(View):
         if selected_menu_num == RET_CODE__BACK_BUTTON:
             return Destination(BackStackView)
 
-        # A JoinMarket fidelity bond is shown on its own screen next.
-        if psbt_parser.is_bond_spend:
-            return Destination(PSBTFidelityBondView, view_args={"bond_num": 0})
+        # Old-style multi-input segwit without the previous transactions: the fee
+        # cannot be proven (CVE-2020-14199). Warn, then carry on as usual.
+        if psbt_parser.unverified_amount_inputs:
+            return Destination(PSBTUnverifiedAmountWarningView)
 
-        # expecting p2sh (legacy multisig) and p2pkh to have no policy set
-        # skip change warning and psbt math view
-        if psbt_parser.policy == None:
-            return Destination(PSBTUnsupportedScriptTypeWarningView)
-        
-        elif psbt_parser.change_amount == 0:
-            return Destination(PSBTNoChangeWarningView)
+        return _route_after_signing_mode(psbt_parser)
 
-        else:
-            return Destination(PSBTMathView)
+
+
+def _route_after_signing_mode(psbt_parser: PSBTParser) -> Destination:
+    # A JoinMarket fidelity bond is shown on its own screen next.
+    if psbt_parser.is_bond_spend:
+        return Destination(PSBTFidelityBondView, view_args={"bond_num": 0})
+
+    # expecting p2sh (legacy multisig) and p2pkh to have no policy set
+    # skip change warning and psbt math view
+    if psbt_parser.policy == None:
+        return Destination(PSBTUnsupportedScriptTypeWarningView)
+
+    elif psbt_parser.change_amount == 0:
+        return Destination(PSBTNoChangeWarningView)
+
+    else:
+        return Destination(PSBTMathView)
+
+
+
+class PSBTUnverifiedAmountWarningView(View):
+    """
+        XBT fork: a multi-input segwit v0 PSBT signed the old way (XBT mode off)
+        without the previous transactions. BIP143 signs only each input's own
+        amount, so the fee shown here cannot be proven (CVE-2020-14199). Upstream
+        signs these without a word; this fork says so and lets the user decide.
+    """
+    def run(self):
+        psbt_parser: PSBTParser = self.controller.psbt_parser
+        if not psbt_parser:
+            return Destination(MainMenuView)
+
+        inputs = ", ".join(str(n) for n in psbt_parser.unverified_amount_inputs)
+        selected_menu_num = self.run_screen(
+            WarningScreen,
+            title=_("Check the Fee"),
+            # TRANSLATOR_NOTE: The device cannot check the amounts of these inputs, so the fee shown may be wrong
+            status_headline=_("Inputs {}").format(inputs),
+            text=_("No previous transactions: the fee cannot be proven. Check it in your wallet."),
+            button_data=[ButtonOption("Continue")],
+        )
+
+        if selected_menu_num == RET_CODE__BACK_BUTTON:
+            return Destination(BackStackView)
+
+        return _route_after_signing_mode(psbt_parser)
 
 
 
@@ -685,7 +724,69 @@ class PSBTFinalizeView(View):
             
             else:
                 self.controller.psbt = trimmed_psbt
-                return Destination(PSBTSignedQRDisplayView)
+                return Destination(PSBTSignedExportView)
+
+
+
+class PSBTSignedExportView(View):
+    """
+        XBT fork: how to take the signed PSBT out. A big transaction is a long
+        animated QR, so it can also be written to a microSD card (FAT) as a .psbt
+        file, which Sparrow/Shrike open with File > Open Transaction.
+    """
+    SHOW_QR = ButtonOption("Show QR", SeedSignerIconConstants.QRCODE)
+    SAVE_SD = ButtonOption("Save to microSD", SeedSignerIconConstants.MICROSD)
+
+    def run(self):
+        import sys
+        from seedsigner.hardware.microsd import MicroSD
+        # No card to write to: in the browser simulator (Pyodide) or with none inserted.
+        if sys.platform == "emscripten" or not MicroSD.get_instance().is_inserted:
+            return Destination(PSBTSignedQRDisplayView, skip_current_view=True)
+
+        button_data = [self.SHOW_QR, self.SAVE_SD]
+        selected_menu_num = self.run_screen(
+            ButtonListScreen,
+            title=_("Signed PSBT"),
+            is_button_text_centered=False,
+            button_data=button_data,
+            show_back_button=False,
+        )
+        if button_data[selected_menu_num] == self.SAVE_SD:
+            return Destination(PSBTSaveToMicroSDView)
+        return Destination(PSBTSignedQRDisplayView)
+
+
+
+class PSBTSaveToMicroSDView(View):
+    def run(self):
+        from seedsigner.helpers.psbt_file import save_signed_psbt
+        try:
+            filename = save_signed_psbt(self.controller.psbt)
+        except Exception as e:
+            selected_menu_num = self.run_screen(
+                WarningScreen,
+                title=_("microSD"),
+                status_headline=_("Could not save"),
+                text=_("Insert a FAT-formatted microSD card and try again. ({})").format(e),
+                button_data=[ButtonOption("Try again"), ButtonOption("Show QR")],
+                show_back_button=False,
+            )
+            if selected_menu_num == 0:
+                return Destination(PSBTSaveToMicroSDView, skip_current_view=True)
+            return Destination(PSBTSignedQRDisplayView, skip_current_view=True)
+
+        selected_menu_num = self.run_screen(
+            LargeIconStatusScreen,
+            title=_("microSD"),
+            status_headline=_("Saved"),
+            text=_("{}\nOpen it in Sparrow/Shrike: File > Open Transaction.").format(filename),
+            button_data=[ButtonOption("Done"), ButtonOption("Show QR")],
+            show_back_button=False,
+        )
+        if selected_menu_num == 1:
+            return Destination(PSBTSignedQRDisplayView, skip_current_view=True)
+        return Destination(MainMenuView, clear_history=True)
 
 
 

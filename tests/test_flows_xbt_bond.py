@@ -42,6 +42,7 @@ class TestXbtBondFlows(FlowTest):
             FlowStep(psbt_views.PSBTMathView, screen_return_value=0),
             FlowStep(psbt_views.PSBTAddressDetailsView, screen_return_value=0),
             FlowStep(psbt_views.PSBTFinalizeView, button_data_selection=psbt_views.PSBTFinalizeView.APPROVE_PSBT),
+            FlowStep(psbt_views.PSBTSignedExportView, button_data_selection=psbt_views.PSBTSignedExportView.SHOW_QR),
             FlowStep(psbt_views.PSBTSignedQRDisplayView, before_run=grab),
             FlowStep(MainMenuView),
         ])

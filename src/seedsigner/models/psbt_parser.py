@@ -170,13 +170,15 @@ class PSBTParser():
         * Signed with 0x21, nothing more is needed: the unified sighash commits to the
           amount of every input, so a false amount only makes the signature invalid.
         * Signed the old way, an input with only a witness_utxo is refused when its
-          sighash does not commit to the amount (legacy P2PKH/P2SH), and also, unlike
-          upstream, when it is segwit v0 in a transaction with more than one input:
+          sighash does not commit to the amount (legacy P2PKH/P2SH). Segwit v0 in a
+          transaction with more than one input is signed (as upstream does) but is
+          listed in unverified_amount_inputs, and the user is warned before signing:
           BIP143 commits only to the signed input's own amount, which is
           CVE-2020-14199 (double-signing for a hidden fee). Taproot commits to all.
         """
         total = 0
         many = len(self.psbt.inputs) > 1
+        self.unverified_amount_inputs = []
         for i, inp in enumerate(self.psbt.inputs):
             n = i + 1
             if inp.non_witness_utxo is None:
@@ -187,7 +189,9 @@ class PSBTParser():
                     if script_type in PSBTParser.UNCOMMITTED_AMOUNT_SCRIPT_TYPES:
                         raise PSBTInputAmountVerificationError(_("Input {} ({}) has no previous transaction to verify its amount against, so the fee cannot be trusted.").format(n, script_type))
                     if many and script_type in PSBTParser.SEGWIT_V0_SCRIPT_TYPES:
-                        raise PSBTInputAmountVerificationError(_("Input {}: a multi-input segwit transaction without the previous transactions cannot prove its fee (CVE-2020-14199). Export the PSBT with full previous transactions, or sign it in XBT mode.").format(n))
+                        # Not refused (upstream signs these silently): the user is
+                        # warned before signing that the fee cannot be proven.
+                        self.unverified_amount_inputs.append(n)
             else:
                 vout = self.psbt.tx.vin[i].vout
                 if vout >= len(inp.non_witness_utxo.vout):
