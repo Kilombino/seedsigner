@@ -113,21 +113,13 @@ class OpeningSplashScreen(LogoScreen):
                 # Hold on the version num for a moment
                 time.sleep(1)
 
-            # Set up the partner logo
-            partner_logo: Image.Image = self.partner_logos[self.get_random_partner()]
-            font = Fonts.get_font(GUIConstants.get_top_nav_title_font_name(), GUIConstants.get_body_font_size())
-            # TRANSLATOR_NOTE: This is on the opening splash screen, displayed above the HRF logo
-            sponsor_text = _("With support from:")
-            (left, top, tw, th) = font.getbbox(sponsor_text, anchor="lt")
-
-            x = int((self.renderer.canvas_width) / 2)
-            y = self.canvas_height - GUIConstants.COMPONENT_PADDING - partner_logo.height - int(GUIConstants.COMPONENT_PADDING/2) - th
-            self.renderer.draw.text(xy=(x, y), text=sponsor_text, font=font, fill="#ccc", anchor="mt")
+            # XBT fork: the Bitcoin (BLAKE2b) coin where upstream shows its partner logo.
+            coin: Image.Image = load_image("coin_100.png")
             self.renderer.canvas.paste(
-                partner_logo,
+                coin,
                 (
-                    int((self.renderer.canvas_width - partner_logo.width) / 2),
-                    y + th + int(GUIConstants.COMPONENT_PADDING/2)
+                    int((self.renderer.canvas_width - coin.width) / 2),
+                    self.canvas_height - GUIConstants.COMPONENT_PADDING - coin.height
                 )
             )
 
