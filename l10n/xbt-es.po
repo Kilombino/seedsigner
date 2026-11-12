@@ -3,11 +3,11 @@
 msgid "For XBT (BLAKE2b) · sighash 0x21"
 msgstr "Para XBT (BLAKE2b) · sighash 0x21"
 
-msgid "Both chains · bonds 0x21"
-msgstr "Ambas cadenas · bonds 0x21"
+msgid "No replay protection on the Spamchain · bonds 0x21"
+msgstr "Sin protección replay en Spamchain · bonds 0x21"
 
-msgid "Both chains · no replay protection"
-msgstr "Ambas cadenas · sin protección replay"
+msgid "No replay protection on the Spamchain"
+msgstr "Sin protección replay en Spamchain"
 
 msgid "Fidelity Bond"
 msgstr "Fidelity bond"
@@ -112,8 +112,8 @@ msgstr "Modo XBT apagado"
 msgid "No replay protection"
 msgstr "Sin protección replay"
 
-msgid "Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."
-msgstr "Vale en SHA-256 y en BLAKE2b: se puede retransmitir en la otra cadena."
+msgid "Valid on Spamcoin and on Bitcoin: it can be replayed."
+msgstr "Válida en Spamcoin y en Bitcoin: se puede hacer replay."
 
 msgid "Will Not Sign"
 msgstr "No se firma"

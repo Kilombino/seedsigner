@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: seedsigner 0.8.7\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-12 13:44+0000\n"
+"POT-Creation-Date: 2026-11-12 13:51+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -180,11 +180,11 @@ msgid "For XBT (BLAKE2b) · sighash 0x21"
 msgstr ""
 
 #: src/seedsigner/gui/screens/psbt_screens.py
-msgid "Both chains · bonds 0x21"
+msgid "No replay protection on the Spamchain · bonds 0x21"
 msgstr ""
 
 #: src/seedsigner/gui/screens/psbt_screens.py
-msgid "Both chains · no replay protection"
+msgid "No replay protection on the Spamchain"
 msgstr ""
 
 #. A JoinMarket fidelity bond: coins timelocked to show a maker is serious
@@ -1020,7 +1020,7 @@ msgid "No replay protection"
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
-msgid "Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."
+msgid "Valid on Spamcoin and on Bitcoin: it can be replayed."
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py

@@ -792,9 +792,9 @@ class PSBTFinalizeScreen(ButtonListScreen):
             if self.xbt_signing == "all":
                 mode_text, mode_color = _("For XBT (BLAKE2b) · sighash 0x21"), GUIConstants.ACCENT_COLOR
             elif self.xbt_signing == "bonds":
-                mode_text, mode_color = _("Both chains · bonds 0x21"), GUIConstants.WARNING_COLOR
+                mode_text, mode_color = _("No replay protection on the Spamchain · bonds 0x21"), GUIConstants.WARNING_COLOR
             else:
-                mode_text, mode_color = _("Both chains · no replay protection"), GUIConstants.WARNING_COLOR
+                mode_text, mode_color = _("No replay protection on the Spamchain"), GUIConstants.WARNING_COLOR
             self.components.append(TextArea(
                 text=mode_text,
                 font_color=mode_color,

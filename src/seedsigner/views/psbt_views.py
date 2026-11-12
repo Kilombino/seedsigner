@@ -207,7 +207,7 @@ class PSBTSigningModeView(View):
                 title=_("XBT Mode Off"),
                 # TRANSLATOR_NOTE: The original Bitcoin chain, as opposed to Bitcoin BLAKE2b (XBT)
                 status_headline=_("No replay protection"),
-                text=_("Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."),
+                text=_("Valid on Spamcoin and on Bitcoin: it can be replayed."),
                 button_data=[ButtonOption("Continue")],
             )
 
