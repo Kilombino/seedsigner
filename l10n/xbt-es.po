@@ -3,11 +3,11 @@
 msgid "For XBT (BLAKE2b) · sighash 0x21"
 msgstr "Para XBT (BLAKE2b) · sighash 0x21"
 
-msgid "SHA-256 chain · bonds 0x21"
-msgstr "Cadena SHA-256 · bonds 0x21"
+msgid "Both chains · bonds 0x21"
+msgstr "Ambas cadenas · bonds 0x21"
 
-msgid "For the SHA-256 chain · XBT off"
-msgstr "Para la cadena SHA-256 · XBT apagado"
+msgid "Both chains · no replay protection"
+msgstr "Ambas cadenas · sin protección replay"
 
 msgid "Fidelity Bond"
 msgstr "Fidelity bond"
@@ -109,11 +109,11 @@ msgstr "El modo XBT está apagado, pero las entradas de fidelity bond se firman 
 msgid "XBT Mode Off"
 msgstr "Modo XBT apagado"
 
-msgid "SHA-256 chain"
-msgstr "Cadena SHA-256"
+msgid "No replay protection"
+msgstr "Sin protección replay"
 
-msgid "Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay protection. Turn on XBT mode in Settings to sign for XBT."
-msgstr "Firmas normales: NO valen en Bitcoin BLAKE2b y no tienen protección contra replay. Activa el modo XBT en Ajustes para firmar para XBT."
+msgid "Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."
+msgstr "Vale en SHA-256 y en BLAKE2b: se puede retransmitir en la otra cadena."
 
 msgid "Will Not Sign"
 msgstr "No se firma"

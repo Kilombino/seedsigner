@@ -588,8 +588,8 @@ class SettingsDefinition:
      
 
         # XBT fork. On: every input is signed with the unified sighash 0x21, valid
-        # only on the Bitcoin BLAKE2b chain (replay-safe). Off: ordinary signatures
-        # for the SHA-256 chain. JoinMarket fidelity bonds are always signed 0x21.
+        # only on the Bitcoin BLAKE2b chain (replay-safe). Off: ordinary signatures,
+        # valid on both chains (replayable). JoinMarket fidelity bonds are always signed 0x21.
         SettingsEntry(category=SettingsConstants.CATEGORY__FEATURES,
                       attr_name=SettingsConstants.SETTING__XBT_MODE,
                       abbreviated_name="xbt",

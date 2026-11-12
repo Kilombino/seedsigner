@@ -421,6 +421,7 @@ def generate_screenshots(locale):
                 ScreenshotConfig(psbt_views.PSBTAddressVerificationFailedView, dict(is_change=True, is_multisig=True),   screenshot_name="PSBTAddressVerificationFailedView_multisig_change"),
                 ScreenshotConfig(psbt_views.PSBTAddressVerificationFailedView, dict(is_change=False, is_multisig=True),  screenshot_name="PSBTAddressVerificationFailedView_multisig_selftransfer"),
                 ScreenshotConfig(psbt_views.PSBTFinalizeView,     mock_context_manager=mock_multisig_psbt_loaded),
+                ScreenshotConfig(psbt_views.PSBTSigningModeView, mock_context_manager=mock_single_sig_psbt_loaded),
                 ScreenshotConfig(psbt_views.PSBTUnverifiedAmountWarningView, mock_context_manager=mock_single_sig_psbt_loaded),
                 ScreenshotConfig(psbt_views.PSBTSignedExportView, mock_context_manager=mock_single_sig_psbt_loaded),
                 #ScreenshotConfig(PSBTSignedQRDisplayViewScreenshotConfig),

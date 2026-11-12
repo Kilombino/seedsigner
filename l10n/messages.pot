@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: seedsigner 0.8.7\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-11 23:54+0000\n"
+"POT-Creation-Date: 2026-11-12 13:44+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -180,11 +180,11 @@ msgid "For XBT (BLAKE2b) · sighash 0x21"
 msgstr ""
 
 #: src/seedsigner/gui/screens/psbt_screens.py
-msgid "SHA-256 chain · bonds 0x21"
+msgid "Both chains · bonds 0x21"
 msgstr ""
 
 #: src/seedsigner/gui/screens/psbt_screens.py
-msgid "For the SHA-256 chain · XBT off"
+msgid "Both chains · no replay protection"
 msgstr ""
 
 #. A JoinMarket fidelity bond: coins timelocked to show a maker is serious
@@ -1016,13 +1016,11 @@ msgstr ""
 
 #. The original Bitcoin chain, as opposed to Bitcoin BLAKE2b (XBT)
 #: src/seedsigner/views/psbt_views.py
-msgid "SHA-256 chain"
+msgid "No replay protection"
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py
-msgid ""
-"Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay "
-"protection. Turn on XBT mode in Settings to sign for XBT."
+msgid "Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."
 msgstr ""
 
 #: src/seedsigner/views/psbt_views.py

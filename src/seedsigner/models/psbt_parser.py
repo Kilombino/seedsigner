@@ -124,7 +124,7 @@ class PSBTParser():
 
         * A JoinMarket fidelity-bond input: always 0x21, in either mode.
         * XBT mode on: every input 0x21.
-        * XBT mode off: the old signatures (SIGHASH_ALL), for the SHA-256 chain.
+        * XBT mode off: the old signatures (SIGHASH_ALL), valid on both chains (replayable).
 
         A PSBT may name a hash type in PSBT_IN_SIGHASH_TYPE. An input that will be
         signed 0x21 and names nothing, 0x00, 0x01 or 0x21 is signed 0x21 and the

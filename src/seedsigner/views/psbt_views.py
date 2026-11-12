@@ -174,7 +174,7 @@ class PSBTSigningModeView(View):
     """
         XBT fork: the chain the signatures will be valid on, impossible to miss.
         XBT mode on: everything 0x21 (Bitcoin BLAKE2b only, replay-safe). Off: the
-        SHA-256 chain's ordinary signatures, except fidelity bonds (always 0x21).
+        ordinary signatures, valid on both chains (replayable), except fidelity bonds (always 0x21).
     """
     def run(self):
         from seedsigner.gui.components import GUIConstants
@@ -206,8 +206,8 @@ class PSBTSigningModeView(View):
                 WarningScreen,
                 title=_("XBT Mode Off"),
                 # TRANSLATOR_NOTE: The original Bitcoin chain, as opposed to Bitcoin BLAKE2b (XBT)
-                status_headline=_("SHA-256 chain"),
-                text=_("Ordinary signatures: NOT valid on Bitcoin BLAKE2b, and with no replay protection. Turn on XBT mode in Settings to sign for XBT."),
+                status_headline=_("No replay protection"),
+                text=_("Valid on SHA-256 and on BLAKE2b: it can be replayed on the other chain."),
                 button_data=[ButtonOption("Continue")],
             )
 
